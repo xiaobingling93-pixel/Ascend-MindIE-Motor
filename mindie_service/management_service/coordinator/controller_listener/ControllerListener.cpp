@@ -23,6 +23,7 @@ namespace MINDIE::MS {
 
 static constexpr size_t SET_MASTER = 5;
 static constexpr uint32_t MAX_CHECK_TIMES_OF_COOR_STATUS = 10;
+static constexpr uint32_t MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL = 100;
 
 ControllerListener::ControllerListener(std::unique_ptr<MINDIE::MS::DIGSScheduler> &schedulerInit,
     std::unique_ptr<ClusterNodes>& instancesRec, std::unique_ptr<RequestRepeater>& requestRepeater1,
@@ -719,6 +720,19 @@ void ControllerListener::Remove(const std::vector<uint64_t> &removeVec)
     }
 }
 
+/**
+* @brief Parse query parameters from a URL.
+*
+* Extracts query parameters (key-value pairs) from the query part of a URL
+* Parsing stops and returns the already parsed query parameters when the maximum allowed
+* parameter count (MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL) is exceeded.
+*
+* Supported URL format:
+*   protocol://hostname[:port]/path[;parameters][?query]#fragment
+*
+* @param url The input URL string.
+* @return Parsed query parameters as <key, value> pairs.
+*/
 std::vector<std::pair<std::string, std::string>> ControllerListener::ParseQuery(const std::string& url) const
 {
     std::vector<std::pair<std::string, std::string>> queryParams;
@@ -732,6 +746,18 @@ std::vector<std::pair<std::string, std::string>> ControllerListener::ParseQuery(
         std::string queryString = url.substr(start, end - start);
         std::string::size_type pos = 0;
         while (pos < queryString.length()) {
+            /*
+            Limit the number of parsed query parameters
+            to mitigate potential DoS attacks caused by excessively large URLs.
+            */
+            if (queryParams.size() >= MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL) {
+                LOG_W("[%s] [ControllerListener] The number of query parameters in the URL exceeds %u "
+ 	                "while executing ParseQuery; parsing has been truncated.",
+                    GetErrorCode(ErrorType::INVALID_INPUT, CoordinatorFeature::CONTROLLER_LISTENER).c_str(),
+                    MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL);
+                return queryParams;
+            }
+
             std::string::size_type separator = queryString.find('&', pos);
             if (separator == std::string::npos) {
                 separator = queryString.length();
