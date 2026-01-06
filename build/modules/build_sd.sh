@@ -19,7 +19,7 @@ mkdir -p "$OUTPUT_DIR"
 
 cd "$MODULES_DIR"
 if [ ! -d "MindIE-SD" ]; then
-    git clone --depth 1 https://gitee.com/ascend/MindIE-SD.git
+    git clone --depth 1 https://gitcode.com/ascend/MindIE-SD.git
 else
     echo "MindIE-SD exists in $MODULES_DIR, skip download."
 fi

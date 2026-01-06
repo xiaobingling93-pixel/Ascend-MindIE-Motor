@@ -7,7 +7,7 @@
 1. 下载编译代码仓
 
    ```
-   git clone https://gitee.com/Ascend/MindIE-Motor.git
+   git clone https://gitcode.com/Ascend/MindIE-Motor.git
    cd MindIE-Motor
    bash build/build.sh -d 3rd -b 3rd service
    ```

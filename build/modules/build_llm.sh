@@ -84,7 +84,7 @@ function prepare_dependency()
 
 cd "$MODULES_DIR"
 if [ ! -d "MindIE-LLM" ]; then
-    git clone --depth 1 https://gitee.com/ascend/MindIE-LLM.git
+    git clone --depth 1 https://gitcode.com/ascend/MindIE-LLM.git
 else
     echo "MindIE-LLM exists in $MODULES_DIR, skip download."
 fi
