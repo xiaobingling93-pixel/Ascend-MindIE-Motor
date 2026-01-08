@@ -9,7 +9,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-
+source "$MINDIE_USER_HOME_PATH/Ascend/mindie/latest/mindie-service/set_env.sh"
+source "$MINDIE_USER_HOME_PATH/Ascend/mindie/latest/mindie-llm/set_env.sh"
+# set_common_env支持用户修改环境变量覆盖原始MindIE环境变量
 set_common_env
 
 jemalloc_path=$(find /usr/lib /usr/lib64 -maxdepth 2 -type f -name "libjemalloc.so.2" 2>/dev/null | head -n 1)
@@ -23,21 +25,8 @@ else
     echo "Please make sure jemalloc is installed."
 fi
 
-
-export LD_LIBRARY_PATH="$MINDIE_LLM_HOME_PATH/lib:$MINDIE_LLM_HOME_PATH/lib/grpc:$MIES_INSTALL_PATH/lib:$MIES_INSTALL_PATH/lib/grpc:$LD_LIBRARY_PATH"
-export PYTHONPATH="$MINDIE_LLM_HOME_PATH:$MINDIE_LLM_HOME_PATH/lib:$MIES_INSTALL_PATH/bin:$PYTHONPATH"
-
-mindie_llm_path="$MINDIE_LLM_HOME_PATH"
-chmod u+w "${mindie_llm_path}"
-py_logs_path="${mindie_llm_path}/logs"
-if [ ! -d "${py_logs_path}" ]; then
-    mkdir "${py_logs_path}"
-fi
-chmod 750 "${py_logs_path}"
-export MINDIE_LLM_PYTHON_LOG_PATH="${py_logs_path}"
-
+export PYTHONPATH="$MIES_INSTALL_PATH/bin:$PYTHONPATH"
 export HSECEASY_PATH="$MIES_INSTALL_PATH/lib"
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$MIES_INSTALL_PATH/lib"
 CONFIG_DIR="$MIES_INSTALL_PATH/conf"
 
 cd "$MIES_INSTALL_PATH"
