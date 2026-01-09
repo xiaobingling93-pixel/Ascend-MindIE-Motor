@@ -94,12 +94,13 @@ def load_cert():
     return context
 
 
-def fetch_ip_with_name(name: str) -> str:
+def fetch_ip_with_namespace_and_name(namespace: str, name: str) -> str:
     pods_info = kubectl_get_pods_info()
     pod_info_lines = pods_info.split("\n")
     ip_idx = pod_info_lines[0].find("IP")
+    namespace_idx = pod_info_lines[0].find("NAMESPACE")
     for line in pod_info_lines:
-        if name in line:
+        if line[namespace_idx:].split(" ")[0].strip() == namespace and name in line:
             return line[ip_idx:].split(" ")[0].strip()
     return ""
 
@@ -113,10 +114,11 @@ def fetch_server_ip_and_port(params: CheckParams) -> str:
                     return line.split(port_name)[-1].strip()
         return ""
 
-    haproxy_ip = fetch_ip_with_name("haproxy")
+    haproxy_ip = fetch_ip_with_namespace_and_name(params.namespace, "haproxy")
     if haproxy_ip:
         return f"{haproxy_ip}:{fetch_port(os.path.join(params.deployment_dir, 'haproxy_init.yaml'), 'port:')}"
-    return f"{fetch_ip_with_name(f'{params.namespace}-coordinator')}:{params.coordinator_port}"
+    coordinator_ip = fetch_ip_with_namespace_and_name(params.namespace, f'{params.namespace}-coordinator')
+    return f"{coordinator_ip}:{params.coordinator_port}"
 
 
 def parse_boot_args(boot_args: list) -> dict:
@@ -189,7 +191,7 @@ def check_service_status(http_pool_manager, params: CheckParams) -> bool:
 
 def get_request_token_sum_from_metrics(http_pool_manager, params: CheckParams) -> int:
     try:
-        coordinator_ip = fetch_ip_with_name(f"{params.namespace}-coordinator")
+        coordinator_ip = fetch_ip_with_namespace_and_name(params.namespace, f"{params.namespace}-coordinator")
         logging.info(f"Fetch coordinator ip successfully: {coordinator_ip}")
         http_prefix = "https" if params.with_cert else "http"
         response = http_pool_manager.request(
