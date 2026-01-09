@@ -68,12 +68,6 @@
             "sha256sum": "e97aab4e7c81a3af86ef894bd5bcfbd747f6ccb9a8860a8f3738aa4079651adc"
         },
         {
-            "url": "https://mindie.obs.cn-north-4.myhuaweicloud.com/cert/1.0.0/MindIE-KMC_${arch}.zip",
-            "save_as": "MindIE-KMC.zip",
-            "type": "zip",
-            "sha256sum": "04cc540a146ed8f448dd11350430bc836f1e85c13c991f224988a725cf4785b2"
-        },
-        {
             "url": "https://mindie.obs.cn-north-4.myhuaweicloud.com/open_source/nlohmanJson/v3.11.3.zip",
             "save_as": "nlohmann-json.zip",
             "type": "zip",
@@ -84,12 +78,6 @@
             "save_as": "makeself.zip",
             "type": "zip",
             "sha256sum": "235e87321c6fa3bc43328b4403653e0f72ebea4697a28851bf958b09f9ea6f18"
-        },
-        {
-            "url": "https://mindie.obs.cn-north-4.myhuaweicloud.com/open_source/cpp-httplib/v0.18.7.zip",
-            "save_as": "cpp-httplib.zip",
-            "type": "zip",
-            "sha256sum": "a5e878f58b035b6b2258c982af5696b7e510ee7e6033799e083bcdc6efc0cdfe"
         },
         {
             "url": "https://mindie.obs.cn-north-4.myhuaweicloud.com/open_source/prometheus-cpp/v1.3.0/prometheus-cpp-with-submodules.tar.gz",

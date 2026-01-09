@@ -128,17 +128,6 @@ unzip_spdlog() {
     mv spdlog-1.15.3 spdlog
 }
 
-unzip_hseceasy() {
-    cd "$THIRD_PARTY_SRC_DIR"
-    if [ -d "hseceasy" ]; then
-        echo "Found hseceasy source code at '$THIRD_PARTY_SRC_DIR/hseceasy'."
-        return
-    fi
-    echo "unzip hseceasy..."
-    mkdir -p hseceasy
-    unzip -qo "$THIRD_PARTY_ZIP_DIR"/MindIE-KMC.zip -d hseceasy
-}
-
 unzip_nlohmann_json() {
     cd "$THIRD_PARTY_SRC_DIR"
     if [ -d "nlohmann-json" ]; then
@@ -148,17 +137,6 @@ unzip_nlohmann_json() {
     echo "unzip nlohmann-json..."
     unzip -qo "$THIRD_PARTY_ZIP_DIR"/nlohmann-json.zip
     mv json-3.11.3 nlohmann-json
-}
-
-unzip_cpp_httblib() {
-    cd "$THIRD_PARTY_SRC_DIR"
-    if [ -d "cpp-httplib" ]; then
-        echo "Found cpp-httplib source code at '$THIRD_PARTY_SRC_DIR/cpp-httplib'."
-        return
-    fi
-    echo "unzip cpp-httplib..."
-    unzip -qo "$THIRD_PARTY_ZIP_DIR"/cpp-httplib.zip
-    mv cpp-httplib-0.18.7 cpp-httplib
 }
 
 unzip_prometheus_cpp() {
@@ -240,9 +218,7 @@ main()
     unzip_pybind11
     unzip_libboundscheck
     unzip_spdlog
-    unzip_hseceasy
     unzip_nlohmann_json
-    unzip_cpp_httblib
     unzip_prometheus_cpp
     unzip_google_test
     unzip_cpp_stub
