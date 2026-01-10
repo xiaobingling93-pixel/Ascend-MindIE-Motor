@@ -11,6 +11,9 @@
 
 source "$MINDIE_USER_HOME_PATH/Ascend/mindie/latest/mindie-service/set_env.sh"
 source "$MINDIE_USER_HOME_PATH/Ascend/mindie/latest/mindie-llm/set_env.sh"
+export MINDIE_LOG_TO_STDOUT=1
+export MINDIE_LOG_LEVEL=info
+export MINDIE_LOG_TO_FILE=1
 # set_common_env支持用户修改环境变量覆盖原始MindIE环境变量
 set_common_env
 
@@ -25,7 +28,6 @@ else
     echo "Please make sure jemalloc is installed."
 fi
 
-export PYTHONPATH="$MIES_INSTALL_PATH/bin:$PYTHONPATH"
 export HSECEASY_PATH="$MIES_INSTALL_PATH/lib"
 CONFIG_DIR="$MIES_INSTALL_PATH/conf"
 
