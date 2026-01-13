@@ -103,17 +103,9 @@ echo "unzip spdlog..."
 unzip -qo "$THIRD_PARTY_ZIP_DIR"/spdlog.zip
 mv spdlog-1.15.3 spdlog
 
-echo "unzip hseceasy..."
-mkdir -p hseceasy
-unzip -qo "$THIRD_PARTY_ZIP_DIR"/MindIE-KMC.zip -d hseceasy
-
 echo "unzip nlohmann-json..."
 unzip -qo "$THIRD_PARTY_ZIP_DIR"/nlohmann-json.zip
 mv json-3.11.3 nlohmann-json
-
-echo "unzip cpp-httplib..."
-unzip -qo "$THIRD_PARTY_ZIP_DIR"/cpp-httplib.zip
-mv cpp-httplib-0.18.7 cpp-httplib
 
 echo "unzip prometheus-cpp-with-submodules..."
 tar -zxf "$THIRD_PARTY_ZIP_DIR"/prometheus-cpp-with-submodules.tar.gz

@@ -202,6 +202,133 @@ def read_json(json_path):
         return json.load(json_file)
 
 
+def parse_memory_string(memory_str):
+    """
+    解析 Kubernetes 内存字符串为字节数
+    支持格式: Ki, Mi, Gi, Ti, Pi, Ei (二进制单位) 和 K, M, G, T, P, E (十进制单位)
+    """
+    if not memory_str:
+        return 0
+
+    memory_str = str(memory_str).strip()
+
+    # 二进制单位 (1Ki = 1024)
+    binary_units = {
+        'Ki': 1024,
+        'Mi': 1024 ** 2,
+        'Gi': 1024 ** 3,
+        'Ti': 1024 ** 4,
+        'Pi': 1024 ** 5,
+        'Ei': 1024 ** 6,
+    }
+
+    # 十进制单位 (1K = 1000)
+    decimal_units = {
+        'K': 1000,
+        'M': 1000 ** 2,
+        'G': 1000 ** 3,
+        'T': 1000 ** 4,
+        'P': 1000 ** 5,
+        'E': 1000 ** 6,
+    }
+
+    # 尝试二进制单位
+    for unit, multiplier in binary_units.items():
+        if memory_str.endswith(unit):
+            value = float(memory_str[:-len(unit)])
+            return int(value * multiplier)
+
+    # 尝试十进制单位
+    for unit, multiplier in decimal_units.items():
+        if memory_str.endswith(unit) and not memory_str.endswith('i'):
+            value = float(memory_str[:-len(unit)])
+            return int(value * multiplier)
+
+    # 纯数字（字节）
+    try:
+        return int(memory_str)
+    except ValueError as e:
+        raise ValueError(f"Unable to parse memory string: {memory_str}, error: {e}") from e
+
+
+def check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_path):
+    """
+    Check if Coordinator memory configuration is sufficient.
+    Calculates max_requests * body_limit * 1.2 and compares with YAML memory requests.
+    Raises error if calculated value exceeds YAML memory requests.
+    Note: Uses 'requests' instead of 'limits' because Kubernetes scheduler
+    only guarantees 'requests' value when scheduling pods.
+    """
+    # Read ms_coordinator.json config
+    coordinator_config = read_json(ms_coordinator_json_path)
+
+    # Get request_limit config
+    request_limit = coordinator_config.get("request_limit", {})
+    max_requests = request_limit.get("max_requests", 10000)
+    body_limit_mb = request_limit.get("body_limit", 10)  # Unit: MB
+
+    # Calculate theoretical max memory demand (with 20% margin)
+    # body_limit is in MB, convert to bytes
+    body_limit_bytes = body_limit_mb * 1024 * 1024
+    theoretical_max_memory = int(max_requests * body_limit_bytes * 1.2)
+
+    # Get memory requests from YAML (not limits, as scheduler only guarantees requests)
+    try:
+        containers = coordinator_yaml_data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS]
+        container_resources = containers[0][RESOURCES]
+        yaml_memory_requests_str = container_resources[REQUESTS].get("memory", "0")
+        yaml_memory_requests = parse_memory_string(yaml_memory_requests_str)
+    except (KeyError, IndexError) as e:
+        logging.warning(f"Unable to get memory requests from coordinator YAML: {e}")
+        return
+
+    # Format bytes for log output
+    def format_bytes(bytes_val):
+        if bytes_val >= 1024 ** 3:
+            return f"{bytes_val / (1024 ** 3):.2f} Gi"
+        elif bytes_val >= 1024 ** 2:
+            return f"{bytes_val / (1024 ** 2):.2f} Mi"
+        else:
+            return f"{bytes_val} bytes"
+
+    logging.info(f"Coordinator memory config check:")
+    logging.info(f"  max_requests: {max_requests}")
+    logging.info(f"  body_limit: {body_limit_mb} MB ({body_limit_bytes} bytes)")
+    logging.info(f"  Theoretical max memory (with 20% margin): {format_bytes(theoretical_max_memory)}")
+    logging.info(f"  YAML memory requests: {yaml_memory_requests_str} ({yaml_memory_requests} bytes)")
+
+    # Check minimum memory requirement: 4Gi
+    min_memory_bytes = 4 * 1024 ** 3  # 4Gi = 4294967296 bytes
+    if yaml_memory_requests < min_memory_bytes:
+        yaml_mem_str = format_bytes(yaml_memory_requests)
+        min_mem_str = format_bytes(min_memory_bytes)
+        error_msg = (
+            f"Coordinator memory configuration error!\n"
+            f"  YAML memory requests: {yaml_memory_requests_str} ({yaml_mem_str})\n"
+            f"  Minimum required memory: {min_mem_str}\n"
+            f"  Please increase the memory requests in coordinator YAML to at least 4Gi"
+        )
+        raise ValueError(error_msg)
+
+    # Compare: raise error if theoretical max memory exceeds YAML memory requests
+    if theoretical_max_memory > yaml_memory_requests:
+        theoretical_mem_str = format_bytes(theoretical_max_memory)
+        yaml_mem_str = format_bytes(yaml_memory_requests)
+        error_msg = (
+            f"Coordinator memory configuration error!\n"
+            f"  max_requests ({max_requests}) * body_limit ({body_limit_mb} MB) * 1.2 "
+            f"= {theoretical_mem_str}\n"
+            f"  This exceeds the YAML memory requests: "
+            f"{yaml_memory_requests_str} ({yaml_mem_str})\n"
+            f"  Please either:\n"
+            f"    1. Reduce 'max_requests' in user_config.json or 'body_limit' in conf/ms_coordinator.json, or\n"
+            f"    2. Increase the memory requests in coordinator YAML"
+        )
+        raise ValueError(error_msg)
+
+    logging.info(f"Memory config check passed.")
+
+
 def check_config(config: dict):
     if config[P_INSTANCES_NUM] > MAX_P_INSTANCES_NUM or config[P_INSTANCES_NUM] < 1:
         msg = "p_instances_num must between 1 to " + str(MAX_P_INSTANCES_NUM)
@@ -1625,6 +1752,11 @@ if __name__ == '__main__':
         INIT_PORT = out_controller_config["initial_dist_server_port"]
         modify_controller_config(out_controller_config)
         generator_yaml(controller_input_yaml, controller_output_yaml, user_config_path, True, env_config)
+
+        # Check coordinator memory config before generating YAML
+        coordinator_yaml_data = load_yaml(coordinator_input_yaml, False)[0]
+        check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json)
+
         generator_yaml(coordinator_input_yaml, coordinator_output_yaml, user_config_path, False, env_config)
         generator_yaml(server_input_yaml, server_output_yaml, user_config_path, False, env_config)
         exec_all_kubectl_multi(json_config["deploy_config"], output_root_path, user_config_path, env_config["MODEL_ID"])

@@ -11,6 +11,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/common/io_context_pool
     ${CMAKE_CURRENT_SOURCE_DIR}/common/communication
     ${CMAKE_CURRENT_SOURCE_DIR}/common/timer
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/utils
     ${CMAKE_CURRENT_SOURCE_DIR}/alarm
     ${CMAKE_CURRENT_SOURCE_DIR}/processor
     ${CMAKE_CURRENT_SOURCE_DIR}/configure
@@ -65,6 +66,7 @@ file(GLOB ms_coordinator_source_files
     ${CMAKE_CURRENT_SOURCE_DIR}/common/io_context_pool/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/communication/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/timer/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/utils/*.cpp
     ${ROOT_PATH}/common/ipc/*.cpp
     ${ROOT_PATH}/common/digs/*.cpp
     ${ROOT_PATH}/common/ipc/shared_memory/*.cpp

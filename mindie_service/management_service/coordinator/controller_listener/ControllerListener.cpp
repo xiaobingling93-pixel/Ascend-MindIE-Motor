@@ -23,6 +23,7 @@ namespace MINDIE::MS {
 
 static constexpr size_t SET_MASTER = 5;
 static constexpr uint32_t MAX_CHECK_TIMES_OF_COOR_STATUS = 10;
+static constexpr uint32_t MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL = 100;
 
 ControllerListener::ControllerListener(std::unique_ptr<MINDIE::MS::DIGSScheduler> &schedulerInit,
     std::unique_ptr<ClusterNodes>& instancesRec, std::unique_ptr<RequestRepeater>& requestRepeater1,
@@ -107,14 +108,14 @@ void ControllerListener::InstancesRefreshHandler(std::shared_ptr<ServerConnectio
     auto body = boost::beast::buffers_to_string(req.body().data());
     ServerRes res;
     try {
-        if (!PreCheckJsonString(body)) {
+        if (!CheckJsonStringSize(body)) {
             LOG_E("[%s] [Configure] Failed to read controller instance refresh request: %s, json string invalid.",
                 GetErrorCode(ErrorType::EXCEPTION, CoordinatorFeature::CONTROLLER_LISTENER).c_str(),
                 body.substr(0, JSON_STR_SIZE_HEAD).c_str());
             SendErrorRes(connection, boost::beast::http::status::bad_request, "Request format is invalid\r\n");
             return;
         }
-        auto bodyJson = nlohmann::json::parse(body);
+        auto bodyJson = nlohmann::json::parse(body, CheckJsonDepthCallBack);
         auto instances = bodyJson.at("instances");
         if (!init) {
             if (instances.size() > 0) {
@@ -210,14 +211,14 @@ void ControllerListener::InstancesOfflineHandler(std::shared_ptr<ServerConnectio
     auto body = boost::beast::buffers_to_string(req.body().data());
     ServerRes res;
     try {
-        if (!PreCheckJsonString(body)) {
+        if (!CheckJsonStringSize(body)) {
             LOG_E("[%s] [Configure] Failed to read controller instance offline request: %s, json string invalid.",
                 GetErrorCode(ErrorType::EXCEPTION, CoordinatorFeature::CONTROLLER_LISTENER).c_str(),
                 body.substr(0, JSON_STR_SIZE_HEAD).c_str());
             SendErrorRes(connection, boost::beast::http::status::bad_request, "Request format is invalid\r\n");
             return;
         }
-        auto bodyJson = nlohmann::json::parse(body);
+        auto bodyJson = nlohmann::json::parse(body, CheckJsonDepthCallBack);
         auto ids = bodyJson.at("ids").template get<std::vector<uint64_t>>();
         instancesRecord->ProcInstanceIdsUnderFlexSituation(ids);
         auto insNumMax = instancesRecord->GetInsNumMax();
@@ -259,14 +260,14 @@ void ControllerListener::InstancesOnlineHandler(std::shared_ptr<ServerConnection
     auto body = boost::beast::buffers_to_string(req.body().data());
     ServerRes res;
     try {
-        if (!PreCheckJsonString(body)) {
+        if (!CheckJsonStringSize(body)) {
             LOG_E("[%s] [Configure] Failed to read controller instance online request: %s, json string invalid.",
                 GetErrorCode(ErrorType::EXCEPTION, CoordinatorFeature::CONTROLLER_LISTENER).c_str(),
                 body.substr(0, JSON_STR_SIZE_HEAD).c_str());
             SendErrorRes(connection, boost::beast::http::status::bad_request, "Request format is invalid\r\n");
             return;
         }
-        auto bodyJson = nlohmann::json::parse(body);
+        auto bodyJson = nlohmann::json::parse(body, CheckJsonDepthCallBack);
         auto ids = bodyJson.at("ids").template get<std::vector<uint64_t>>();
         auto insNumMax = instancesRecord->GetInsNumMax();
         if (ids.size() > insNumMax) {
@@ -352,14 +353,14 @@ void ControllerListener::AbnormalStatusHandler(std::shared_ptr<ServerConnection>
     ServerRes res;
     nlohmann::json abnormalStatusReply;
     try {
-        if (!PreCheckJsonString(body)) {
+        if (!CheckJsonStringSize(body)) {
             LOG_E("[%s] [Configure] Failed to read controller instance update request: %s, json string invalid.",
                 GetErrorCode(ErrorType::EXCEPTION, CoordinatorFeature::CONTROLLER_LISTENER).c_str(),
                 body.substr(0, JSON_STR_SIZE_HEAD).c_str());
             SendErrorRes(connection, boost::beast::http::status::bad_request, "Request format is invalid\r\n");
             return;
         }
-        auto bodyJson = nlohmann::json::parse(body);
+        auto bodyJson = nlohmann::json::parse(body, CheckJsonDepthCallBack);
         bool isMaster = bodyJson.at("is_master").get<bool>();
         bool isAbnormal = bodyJson.at("is_abnormal").get<bool>();
         res.state = boost::beast::http::status::ok;
@@ -719,6 +720,19 @@ void ControllerListener::Remove(const std::vector<uint64_t> &removeVec)
     }
 }
 
+/**
+* @brief Parse query parameters from a URL.
+*
+* Extracts query parameters (key-value pairs) from the query part of a URL
+* Parsing stops and returns the already parsed query parameters when the maximum allowed
+* parameter count (MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL) is exceeded.
+*
+* Supported URL format:
+*   protocol://hostname[:port]/path[;parameters][?query]#fragment
+*
+* @param url The input URL string.
+* @return Parsed query parameters as <key, value> pairs.
+*/
 std::vector<std::pair<std::string, std::string>> ControllerListener::ParseQuery(const std::string& url) const
 {
     std::vector<std::pair<std::string, std::string>> queryParams;
@@ -732,6 +746,18 @@ std::vector<std::pair<std::string, std::string>> ControllerListener::ParseQuery(
         std::string queryString = url.substr(start, end - start);
         std::string::size_type pos = 0;
         while (pos < queryString.length()) {
+            /*
+            Limit the number of parsed query parameters
+            to mitigate potential DoS attacks caused by excessively large URLs.
+            */
+            if (queryParams.size() >= MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL) {
+                LOG_W("[%s] [ControllerListener] The number of query parameters in the URL exceeds %u "
+ 	                "while executing ParseQuery; parsing has been truncated.",
+                    GetErrorCode(ErrorType::INVALID_INPUT, CoordinatorFeature::CONTROLLER_LISTENER).c_str(),
+                    MAX_ALLOWED_PARAM_NUM_IN_SINGLE_URL);
+                return queryParams;
+            }
+
             std::string::size_type separator = queryString.find('&', pos);
             if (separator == std::string::npos) {
                 separator = queryString.length();
@@ -834,14 +860,14 @@ void ControllerListener::InstancesQueryTasksHandler(std::shared_ptr<ServerConnec
     uint64_t dId;
     MINDIE::MS::DIGSRoleChangeType roleChangeType;
     try {
-        if (!PreCheckJsonString(body)) {
+        if (!CheckJsonStringSize(body)) {
             LOG_E("[%s] [Configure] Failed to read controller instance query request: %s, json string invalid.",
                 GetErrorCode(ErrorType::EXCEPTION, CoordinatorFeature::CONTROLLER_LISTENER).c_str(),
                 body.substr(0, JSON_STR_SIZE_HEAD).c_str());
             SendErrorRes(connection, boost::beast::http::status::bad_request, "Request format is invalid\r\n");
             return;
         }
-        auto bodyJson = nlohmann::json::parse(body);
+        auto bodyJson = nlohmann::json::parse(body, CheckJsonDepthCallBack);
         pId = bodyJson.at("p_id").template get<uint64_t>();
         dId = bodyJson.at("d_id").template get<uint64_t>();
         roleChangeType = bodyJson.at("role_change_type").template get<MINDIE::MS::DIGSRoleChangeType>();

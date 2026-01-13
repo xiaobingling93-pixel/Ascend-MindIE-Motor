@@ -78,6 +78,7 @@ public:
     std::string GetReqId();
     std::shared_ptr<ServerConnection> GetConnection();
     boost::beast::http::request<boost::beast::http::dynamic_body> GetReq();
+    const boost::beast::http::request<boost::beast::http::dynamic_body>& GetReqRef() const;
     ReqNodeInfo GetReqNodeInfo() const;
     
     void SetReq(boost::beast::http::request<boost::beast::http::dynamic_body> newReq);
@@ -102,6 +103,9 @@ public:
     void SetClientConn(std::shared_ptr<ClientConnection> conn);
     std::shared_ptr<ClientConnection> GetClientConn();
 
+    // Actively release large memory objects to reclaim memory earlier when the request ends
+    void ClearLargeMembers();
+
 private:
     bool isStream;
     ReqInferType type;
@@ -116,7 +120,7 @@ private:
     std::array<uint64_t, MEMBER_NUM> route;
     std::array<std::string, IP_INFO_MEMBER_NUM> routeIp;
     std::map<ReqState, std::vector<uint64_t>> status;
-    std::shared_mutex mtx;
+    mutable std::shared_mutex mtx;
 
     std::mutex pdSyncMtx;
 

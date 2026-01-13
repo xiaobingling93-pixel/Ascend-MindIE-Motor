@@ -18,7 +18,7 @@
     "request_limit": {
         "single_node_max_requests": 1000,
         "max_requests": 10000,
-        "body_limit": 10
+        "body_limit": 1
     },
     "metrics_config": {
         "enable": false,

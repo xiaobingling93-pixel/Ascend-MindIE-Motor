@@ -22,6 +22,7 @@ include_directories(
     ${MINDIE_MS_SRC_ROOT}/coordinator/common/io_context_pool
     ${MINDIE_MS_SRC_ROOT}/coordinator/common/communication
     ${MINDIE_MS_SRC_ROOT}/coordinator/common/timer
+    ${MINDIE_MS_SRC_ROOT}/coordinator/common/utils
     ${MINDIE_MS_SRC_ROOT}/coordinator/alarm
     ${MINDIE_MS_SRC_ROOT}/coordinator/processor
     ${MINDIE_MS_SRC_ROOT}/coordinator/configure

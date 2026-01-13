@@ -244,49 +244,6 @@ build_grpc() {
     echo "grpc has been successfully installed to $install_grpc_dir."
 }
 
-build_hseceasy() {
-    src_hseceasy_dir="$SRC_ROOT_DIR/hseceasy"
-    install_hseceasy_dir="$INSTALL_ROOT_DIR/hseceasy"
-    if [ -d "$install_hseceasy_dir/lib" ]; then
-        exist_msg="Found hseceasy at $install_hseceasy_dir, skip to build it.\n""$exist_msg"
-        return
-    fi
-    if [ ! -d "$src_hseceasy_dir" ]; then
-        echo "Error: Source directory $src_hseceasy_dir does not exist."
-        exit 1
-    fi
-
-    cd "$src_hseceasy_dir" || exit 1
-
-    mkdir -p "$install_hseceasy_dir"
-    # hseceasy has been compiled, just copy it.
-    cp -rf "$src_hseceasy_dir"/bin "$install_hseceasy_dir"
-    cp -rf "$src_hseceasy_dir"/include "$install_hseceasy_dir"
-    cp -rf "$src_hseceasy_dir"/lib "$install_hseceasy_dir"
-
-    echo "hseceasy has been successfully installed to $install_hseceasy_dir."
-}
-
-build_cpp_httplib() {
-    src_cpp_httplib_dir="$SRC_ROOT_DIR/cpp-httplib"
-    install_cpp_httplib_dir="$INSTALL_ROOT_DIR/cpp-httplib"
-    if [ -d "$install_cpp_httplib_dir/include" ]; then
-        exist_msg="Found cpp-httplib at $install_cpp_httplib_dir, skip to build it.\n""$exist_msg"
-        return
-    fi
-    mkdir -p "$install_cpp_httplib_dir"
-
-    if [ ! -d "$src_cpp_httplib_dir" ]; then
-        echo "Error: Source directory $src_cpp_httplib_dir does not exist."
-        exit 1
-    fi
-    cd "$src_cpp_httplib_dir" || exit 1
-    mkdir -p "$install_cpp_httplib_dir"/include
-    # cpp_httplib is header only project, just copy it.
-    cp -rf "$src_cpp_httplib_dir"/httplib.h "$install_cpp_httplib_dir"/include
-    echo "cpp-httplib has been successfully installed to $install_cpp_httplib_dir."
-}
-
 build_prometheus_cpp() {
     src_prometheus_cpp_dir="$SRC_ROOT_DIR/prometheus-cpp"
     build_prometheus_cpp_dir="$BUILD_ROOT_DIR/prometheus-cpp"
@@ -407,8 +364,6 @@ while [[ "$#" -gt 0 ]]; do
         --no-pybind11) flag_build_pybind11=false; echo "Skipping nlohmann-json"; shift ;;
         --no-libboundscheck) flag_build_libboundscheck=false; echo "Skipping libboundscheck"; shift ;;
         --no-grpc) flag_build_grpc=false; echo "Skipping grpc"; shift ;;
-        --no-hseceasy) flag_build_hseceasy=false; echo "Skipping hseceasy"; shift ;;
-        --no-cpp-httplib) flag_build_cpp_httplib=false; echo "Skipping cpp-httplib"; shift ;;
         --no-prometheus-cpp) flag_build_prometheus_cpp=false; echo "Skipping prometheus-cpp"; shift ;;
         --no-makeself) flag_build_makeself=false; echo "Skipping makeself"; shift ;;
         --with-googletest) flag_build_googletest=true; echo "Build googletest"; shift ;;
@@ -417,8 +372,7 @@ while [[ "$#" -gt 0 ]]; do
         --only-test)
             flag_build_boost=false; flag_build_openssl=false; flag_build_spdlog=false;
             flag_build_nlohmann_json=false; flag_build_pybind11=false; flag_build_libboundscheck=false;
-            flag_build_grpc=false; flag_build_hseceasy=false; flag_build_cpp_httplib=false;
-            flag_build_prometheus_cpp=false;
+            flag_build_grpc=false; flag_build_prometheus_cpp=false;
             flag_build_googletest=true; flag_build_cpp_stub=true; flag_build_mockcpp=true;
             shift ;;
         --do-parallel) symbol_parallel="&"; echo "Compile parallel"; shift ;;
@@ -454,14 +408,6 @@ fi
 
 if [[ "$flag_build_grpc" != false ]]; then
     build_packages+=("build_grpc $symbol_parallel")
-fi
-
-if [[ "$flag_build_hseceasy" != false ]]; then
-    build_packages+=("build_hseceasy $symbol_parallel")
-fi
-
-if [[ "$flag_build_cpp_httplib" != false ]]; then
-    build_packages+=("build_cpp_httplib $symbol_parallel")
 fi
 
 if [[ "$flag_build_prometheus_cpp" != false ]]; then

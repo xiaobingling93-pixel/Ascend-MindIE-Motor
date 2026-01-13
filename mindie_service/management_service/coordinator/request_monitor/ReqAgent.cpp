@@ -97,6 +97,12 @@ boost::beast::http::request<boost::beast::http::dynamic_body> ReqAgent::GetReq()
     return req;
 }
 
+const boost::beast::http::request<boost::beast::http::dynamic_body>& ReqAgent::GetReqRef() const
+{
+    std::shared_lock<std::shared_mutex> lock(mtx);
+    return req;
+}
+
 ReqNodeInfo ReqAgent::GetReqNodeInfo() const
 {
     return reqNodeInfo;
@@ -241,4 +247,13 @@ std::shared_ptr<ClientConnection> ReqAgent::GetClientConn()
 {
     std::shared_lock<std::shared_mutex> lock(mtx);
     return clientConn;
+}
+
+void ReqAgent::ClearLargeMembers()
+{
+    std::unique_lock<std::shared_mutex> lock(mtx);
+    // Clear the request body to release potentially large request text memory
+    req.body().consume(req.body().size());
+    // Clear the waiting queue to release cached response data
+    waitQueue.Clear();
 }
