@@ -157,6 +157,7 @@ _run_smoke_dt_test()
     ./mindie_ms_coordinator_ut --gtest_filter=TestFlexProcess.*
     ./mindie_ms_coordinator_ut --gtest_filter=TestParseMetric.*
     ./mindie_ms_coordinator_ut --gtest_filter=TestFillInstancesInfoSplitedByFlex.*
+    ./mindie_ms_coordinator_ut --gtest_filter=TestMemoryUtil.*
 }
 
 

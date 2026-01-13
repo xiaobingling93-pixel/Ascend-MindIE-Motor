@@ -103,6 +103,7 @@ void ReqManage::ReleaseFinishedRequest()
             if (clientConn != nullptr) {
                 clientConn->GraceClose();
             }
+            iter->second->ClearLargeMembers();
             LOG_D("[ReqManage] Release finished request. Remove request id %s.", iter->first.c_str());
             iter = reqIdMap.erase(iter);
         } else {

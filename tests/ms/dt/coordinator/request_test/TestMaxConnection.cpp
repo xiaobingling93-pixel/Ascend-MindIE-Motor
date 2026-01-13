@@ -68,11 +68,11 @@ protected:
 /*
 测试描述: 客户端与coordinator建连，连接数超过上限
 测试步骤:
-    1. 将coordinator的最大请求数设置为1，最大连接数为最大请求数3倍
-    2. 客户端向coordinator建立连接，超过3条连接
+    1. 将coordinator的最大请求数设置为1，最大连接数为最大请求数
+    2. 客户端向coordinator建立连接，超过1条连接
     3. 检查客户端的链接数量
 预期结果:
-    1. 客户端的连接数为3
+    1. 客户端的连接数为1
 */
 TEST_F(TestMaxConnection, TestMaxConnectionTC01)
 {
@@ -113,7 +113,7 @@ TEST_F(TestMaxConnection, TestMaxConnectionTC01)
         ASSERT_TRUE(ret);
     }
     sleep(1);
-    EXPECT_EQ(httpClient.GetConnSize(), 3); // 最多3条链接
+    EXPECT_EQ(httpClient.GetConnSize(), 1); // 最多1条链接
     EXPECT_TRUE(threadObj.joinable());
     boost::beast::http::request<boost::beast::http::dynamic_body> req;
     req.method(boost::beast::http::verb::get);

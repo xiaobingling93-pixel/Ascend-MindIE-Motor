@@ -238,8 +238,8 @@ TEST_F(TestMaxReq, TestMaxReqTC01)
 
     sleep(1);
     auto code = SendInferRequest(predictIP, predictPort, tlsItems, "/v1/chat/completions", streamBody, response);
-    EXPECT_EQ(response, "Too many requests\r\n"); // mock实现为将所有的msg拼接
-    EXPECT_EQ(code, 0);
+    EXPECT_EQ(response, ""); // maxconn = maxreqlimit, so exceeding this will prevent connection establishment
+    EXPECT_EQ(code, -1);
 
     if (sendT1.joinable()) {
         sendT1.join();

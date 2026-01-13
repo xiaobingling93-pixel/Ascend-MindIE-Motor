@@ -357,7 +357,7 @@ int RequestListener::DealTritonReq(std::shared_ptr<ReqAgent> reqInfo)
         return -1;
     }
     auto connection = reqInfo->GetConnection();
-    auto req = reqInfo->GetReq();
+    const auto& req = reqInfo->GetReqRef();
     if (TritonModelsIsEmpty(req.target())) {
         LOG_E("[%s] Failed to process Triton request. No models specified for the request.",
             GetErrorCode(ErrorType::INVALID_INPUT, CoordinatorFeature::REQUEST_LISTENER).c_str());
@@ -422,7 +422,7 @@ int RequestListener::DealTGIReq(std::shared_ptr<ReqAgent> reqInfo)
             GetErrorCode(ErrorType::NOT_FOUND, CoordinatorFeature::REQUEST_LISTENER).c_str());
         return -1;
     }
-    auto req = reqInfo->GetReq();
+    const auto& req = reqInfo->GetReqRef();
     auto connection = reqInfo->GetConnection();
     auto body = boost::beast::buffers_to_string(req.body().data());
     try {
@@ -460,7 +460,7 @@ int RequestListener::DealVLLMReq(std::shared_ptr<ReqAgent> reqInfo)
             GetErrorCode(ErrorType::NOT_FOUND, CoordinatorFeature::REQUEST_LISTENER).c_str());
         return -1;
     }
-    auto req = reqInfo->GetReq();
+    const auto& req = reqInfo->GetReqRef();
     auto connection = reqInfo->GetConnection();
     auto body = boost::beast::buffers_to_string(req.body().data());
     try {
@@ -498,7 +498,7 @@ int RequestListener::DealOpenAIReq(std::shared_ptr<ReqAgent> reqInfo)
             GetErrorCode(ErrorType::NOT_FOUND, CoordinatorFeature::REQUEST_LISTENER).c_str());
         return -1;
     }
-    auto req = reqInfo->GetReq();
+    const auto& req = reqInfo->GetReqRef();
     auto connection = reqInfo->GetConnection();
     auto body = boost::beast::buffers_to_string(req.body().data());
     try {
@@ -547,7 +547,7 @@ int RequestListener::DealMindIEReq(std::shared_ptr<ReqAgent> reqInfo)
             GetErrorCode(ErrorType::NOT_FOUND, CoordinatorFeature::REQUEST_LISTENER).c_str());
         return -1;
     }
-    auto req = reqInfo->GetReq();
+    const auto& req = reqInfo->GetReqRef();
     auto connection = reqInfo->GetConnection();
     auto body = boost::beast::buffers_to_string(req.body().data());
     try {

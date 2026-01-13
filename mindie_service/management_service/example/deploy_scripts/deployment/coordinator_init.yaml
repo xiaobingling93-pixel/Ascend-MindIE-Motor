@@ -88,10 +88,10 @@ spec:
                   " ]
               resources:
                 requests:
-                  memory: "4Gi"
+                  memory: "12Gi"
                   cpu: "16"
                 limits:
-                  memory: "8Gi"
+                  memory: "16Gi"
                   cpu: "64"
               volumeMounts:
                 - name: global-ranktable

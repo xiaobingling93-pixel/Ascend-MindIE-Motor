@@ -19,6 +19,7 @@
 #include "SchedulerFactory.h"
 #include "IPCConfig.h"
 #include "HeartbeatProducer.h"
+#include "MemoryUtil.h"
 
 using namespace MINDIE::MS;
 namespace {
@@ -355,9 +356,7 @@ int32_t Coordinator::Run()
         // Using Coordinator specific heartbeat SHM/SEM names
         m_heartbeatProducer = std::make_unique<HeartbeatProducer>(
             std::chrono::milliseconds(producerInterval),
-            HB_COORD_SHM_NAME,
-            HB_COORD_SEM_NAME,
-            DEFAULT_HB_BUFFER_SIZE
+            HB_COORD_SHM_NAME, HB_COORD_SEM_NAME, DEFAULT_HB_BUFFER_SIZE
         );
         m_heartbeatProducer->Start();
         LOG_I("[Coordinator] Heartbeat producer started successfully for SHM: %s, SEM: %s.",
@@ -390,12 +389,14 @@ int32_t Coordinator::Run()
         return -1;
     }
     InitLeader();
+    // check request config memory risk
+    MemoryUtil::CheckRequestConfigMemoryRisk();
     LOG_M("[Start] MindIE-MS coordinator start successful.");
     LOG_I("MindIE-MS coordinator is not ready...");
     // start to work and ready to rcv request from controller and requestRepeater
     try {
         LOG_M("[Start] MindIE-MS coordinator start data server.");
-        size_t maxConn = Configure::Singleton()->reqLimit.maxReqs * 3; // 最大连接数为最大请求数3倍
+        size_t maxConn = Configure::Singleton()->reqLimit.maxReqs; // Maximum connections equal maximum requests.
         // serverThreadNum在配置校验时已约束不会等于0，因此Init接口不会返回-1
         (void)(dataHttpServer.Init(Configure::Singleton()->httpConfig.serverThreadNum, maxConn));
         // http server will block and waiting for request coming
