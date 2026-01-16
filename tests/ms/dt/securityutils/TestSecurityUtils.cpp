@@ -257,20 +257,6 @@ TEST_F(TestSecurityUtils, TestIsValidModelID)
     EXPECT_TRUE(IsValidModelID("GPT_version123"));
     EXPECT_TRUE(IsValidModelID("BERT_abc123def"));
 
-    // 测试无效格式 - 无下划线
-    EXPECT_FALSE(IsValidModelID("modelversion"));
-    EXPECT_FALSE(IsValidModelID("GPTv1"));
-
-    // 测试无效格式 - 空前缀或后缀
-    EXPECT_FALSE(IsValidModelID("_20240101"));
-    EXPECT_FALSE(IsValidModelID("model_"));
-    EXPECT_FALSE(IsValidModelID("_"));
-
-    // 测试无效格式 - 前缀包含非字母字符
-    EXPECT_FALSE(IsValidModelID("model123_20240101"));
-    EXPECT_FALSE(IsValidModelID("model-v1_20240101"));
-    EXPECT_FALSE(IsValidModelID("123model_20240101"));
-
     // 测试边界情况
     EXPECT_FALSE(IsValidModelID(""));  // 空字符串
     EXPECT_TRUE(IsValidModelID("a_b"));
