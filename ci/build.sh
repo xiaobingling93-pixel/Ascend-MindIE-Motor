@@ -48,12 +48,10 @@ THIRD_PARTY_DIR="$MINDIE_SERVICE_SRC_DIR"/third_party
 
 SERVER_TEST_DIR="$MINDIE_SERVICE_SRC_DIR"/tests/server
 MS_TEST_DIR="$MINDIE_SERVICE_SRC_DIR"/tests/ms
-SIMULATOR_TEST_DIR="$MINDIE_SERVICE_SRC_DIR"/tests/service_tools/simulator
 
 # Python wheel
 MINDIE_BENCHMARK_DIR="$MINDIE_SERVICE_SRC_DIR"/mindie_service/tools/benchmark
 MINDIE_CLIENT_DIR="$MINDIE_SERVICE_SRC_DIR"/mindie_service/client
-MINDIE_SIMULATOR_DIR="$MINDIE_SERVICE_SRC_DIR"/mindie_service/tools/simulator
 
 export BUILD_MIES_3RDPARTY_ROOT_DIR="$MINDIE_SERVICE_SRC_DIR"/third_party
 [ -z "$BUILD_MIES_3RDPARTY_INSTALL_DIR" ] && export BUILD_MIES_3RDPARTY_INSTALL_DIR="$BUILD_MIES_3RDPARTY_ROOT_DIR"/install
@@ -174,17 +172,6 @@ build_mindieclient() {
     mv dist/mindieclient*.whl "$BUILD_MINDIE_SERVICE_INSTALL_DIR"/dist
 }
 
-build_mindiesimulator() {
-    cd "$MINDIE_SIMULATOR_DIR"
-    if [ -f setup.py ]; then
-        python setup.py bdist_wheel
-        mkdir -p "$BUILD_MINDIE_SERVICE_INSTALL_DIR"/dist
-        mv dist/mindiesimulator*.whl "$BUILD_MINDIE_SERVICE_INSTALL_DIR"/dist
-    fi
-    rm -rf build *.egg-info dist
-    cd -
-}
-
 function fn_extract_debug_symbols() {
     local in_dir=$1
     local out_dir=$2
@@ -205,7 +192,6 @@ build_mies() {
     build_mies_http_client_ctl &
     build_mindiebenchmark &
     build_mindieclient &
-    build_mindiesimulator &
     wait
     if [[ "$DEBUG" == "false" ]]; then
         fn_extract_debug_symbols \
@@ -221,11 +207,6 @@ build_ms_test() {
     else
         bash test_dt.sh yellow_gate dt
     fi
-}
-
-build_simulator_test() {
-    cd "$SIMULATOR_TEST_DIR"
-    bash test_dt.sh blue_gate
 }
 
 package_mindie_serivce() {
@@ -275,16 +256,12 @@ elif [ "$OPTION" == "benchmark" ]; then
     build_mindiebenchmark
 elif [ "$OPTION" == "client" ]; then
     build_mindieclient
-elif [ "$OPTION" == "simulator" ]; then
-    build_mindiesimulator
 elif [ "$OPTION" == "ms" ]; then
     build_mies_ms
 elif [ "$OPTION" == "http_client_ctl" ]; then
     build_mies_http_client_ctl
 elif [ "$OPTION" == "ms-test" ]; then
     build_ms_test
-elif [ "$OPTION" == "simulator-test" ]; then
-    build_simulator_test
 elif [ "$OPTION" == "package" ]; then
     package_mindie_serivce
 else

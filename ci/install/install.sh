@@ -167,9 +167,6 @@ function chmod_python() {
 
     chmod_dir ${py_install_path}/node_manager "750"
     chmod_file ${py_install_path}/node_manager
-
-    chmod_dir ${py_install_path}/mindiesimulator "750"
-    chmod_file ${py_install_path}/mindiesimulator
 }
 
 function chmod_recursion() {
@@ -246,7 +243,6 @@ function install_python_api() {
     cd $install_dir
     benchmark_wheel_path=$(find $install_dir/bin/ -name mindiebenchmark*.whl)
     client_wheel_path=$(find $install_dir/bin/ -name mindieclient*.whl)
-    simulator_wheel_path=$(find $install_dir/bin/ -name mindiesimulator*.whl)
     model_wrapper_path=$(find $install_dir/bin/ -name model_wrapper*.whl)
     om_adapter_path=$(find $install_dir/bin/ -name om_adapter*.whl)
     node_manager_wheel_path=$(find $install_dir/bin/ -name node_manager*.whl)
@@ -268,11 +264,6 @@ function install_python_api() {
 
     if [[ -n "${py_cmd}" ]]; then
         # 安装新版本
-        ${py_cmd} -m pip install ${simulator_wheel_path} --log-file ${log_file} --force-reinstall
-        if [ $? -ne 0 ]; then
-            print "ERROR" "Failed to install simulator wheel for mindie service"
-            exit 1
-        fi
         ${py_cmd} -m pip install ${om_adapter_path} --log-file ${log_file} --force-reinstall
         if [ $? -ne 0 ]; then
             print "ERROR" "Failed to install adapter wheel for mindie service"

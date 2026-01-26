@@ -44,10 +44,6 @@
 
 MindIE Server已经迁移至MindIE-LLM仓
 
-## tools DT
-
-tools主要包含simulator，即将日落
-
 ## benchmark DT(日落)
 
 benchmark即将日落

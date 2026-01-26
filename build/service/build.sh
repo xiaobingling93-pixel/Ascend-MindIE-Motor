@@ -102,18 +102,6 @@ function build_client() {
     cd -
 }
 
-function build_simulator() {
-    SIMULATOR_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_service/tools/simulator
-    SIMULATOR_DST_DIR="$SERVICE_ROOT_DIR"/install/dist
-    rm -rf ${SIMULATOR_DST_DIR}/mindiesimulator*
-    cd "$SIMULATOR_SRC_DIR"
-    python3 setup.py bdist_wheel
-    mv dist/mindiesimulator*.whl "$SIMULATOR_DST_DIR"
-    rm -rf *.egg-info build/ dist/
-    echo "Build mindiesimulator successfully, saving directory is $SIMULATOR_DST_DIR"
-    cd -
-}
-
 function download_3rdparty() {
     bash "$SERVICE_ROOT_DIR"/build/third_party/download_and_unzip.sh
 }
@@ -165,7 +153,6 @@ function build_service() {
     build_http_client_ctl &
     build_benchmark &
     build_client &
-    build_simulator &
     wait
 
     if [[ "$RELEASE" == "release" ]]; then
@@ -216,8 +203,6 @@ function main() {
         build_benchmark
     elif [ "$OPTION" == "client" ]; then
         build_client
-    elif [ "$OPTION" == "simulator" ]; then
-        build_simulator
     elif [ "$OPTION" == "ms" ]; then
         build_ms
     elif [ "$OPTION" == "http_client_ctl" ]; then
