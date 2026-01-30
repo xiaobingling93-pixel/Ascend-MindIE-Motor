@@ -143,7 +143,6 @@ function main() {
     # Uninstall python package
     python3 -m pip uninstall mindiebenchmark --log-file ${log_file}
     python3 -m pip uninstall mindieclient --log-file ${log_file}
-    python3 -m pip uninstall mindiesimulator --log-file ${log_file}
     python3 -m pip uninstall infer-engine --log-file ${log_file}
     python3 -m pip uninstall model_wrapper --log-file ${log_file}
     python3 -m pip uninstall mies_tokenizer --log-file ${log_file}

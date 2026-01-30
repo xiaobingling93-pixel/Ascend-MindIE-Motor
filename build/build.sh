@@ -107,7 +107,7 @@ function parse_arguments() {
             echo "  -a, --auto                    Automatically build mindie (downloads, builds, and packages 3rd, llm and service). Other options will be ignored."
             echo "  -d, --download [modules]      Download specified modules (3rd, llm)."
             echo "                                If no modules are specified, all are downloaded."
-            echo "  -b, --build [modules]         Build specified modules (3rd, llm, service, server, ms, benchmark, client, simulator, atbmodels)."
+            echo "  -b, --build [modules]         Build specified modules (3rd, llm, service, server, ms, benchmark, client, atbmodels)."
             echo "  -p, --package                 Package mindie compiled output as a installable .run package."
             echo "      --release                 Set build mode to release. Without '--release' or '--debug', default to be '--release'."
             echo "      --debug                   Set build mode to debug. Without '--release' or '--debug', default to be '--release'."
@@ -185,9 +185,6 @@ function build() {
             ;;
         client)
             bash "$BUILD_SCRIPT_DIR"/service/build.sh client
-            ;;
-        simulator)
-            bash "$BUILD_SCRIPT_DIR"/service/build.sh simulator
             ;;
         llm)
             bash "$BUILD_SCRIPT_DIR"/modules/build_llm.sh
