@@ -68,11 +68,11 @@ spec:
           - name: MINDIE_USER_HOME_PATH
             value: /usr/local
           - name: CANN_INSTALL_PATH
-            value: $(MINDIE_USER_HOME_PATH)/Ascend
+            value: /usr/local/Ascend
           - name: MIES_INSTALL_PATH
-            value: $(MINDIE_USER_HOME_PATH)/lib/python3.11/site-packages/mindie_motor
+            value: /usr/local/lib/python3.11/site-packages/mindie_motor
           - name: MINDIE_LLM_HOME_PATH
-            value: $(MINDIE_USER_HOME_PATH)/lib/python3.11/site-packages/mindie_llm
+            value: /usr/local/lib/python3.11/site-packages/mindie_llm
           - name: CONFIG_FROM_CONFIGMAP_PATH
             value: /mnt/configmap
           - name: CONFIG_FROM_CONFIG_FILE_PATH
