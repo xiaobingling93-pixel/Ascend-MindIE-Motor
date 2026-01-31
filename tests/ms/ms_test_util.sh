@@ -28,8 +28,8 @@ _build_kmc()
 
 _build_proto() {
     # 确保进入目录成功
-    cd "${PROJECT_PATH}/mindie_service/management_service" || { echo "Error: Failed to enter build directory"; exit 1; }
-    
+    cd "${PROJECT_PATH}/mindie_motor/src" || { echo "Error: Failed to enter build directory"; exit 1; }
+
     # 仅对必要文件赋权
     if [ -f "build.sh" ]; then
         chmod +x "build.sh"
@@ -114,7 +114,7 @@ _run_smoke_dt_test()
 
     ./mindie_ms_coordinator_ut --gtest_filter=TestCoordinatorMain.*
     ./mindie_ms_coordinator_ut --gtest_filter=TestPDInferReq.*
-    # ./mindie_ms_coordinator_ut --gtest_filter=TestInferReq.* 
+    # ./mindie_ms_coordinator_ut --gtest_filter=TestInferReq.*
     ./mindie_ms_coordinator_ut --gtest_filter=TestDResError.*
     ./mindie_ms_coordinator_ut --gtest_filter=TestMaxReq.*
     ./mindie_ms_coordinator_ut --gtest_filter=TestOpenAI.*
@@ -193,7 +193,7 @@ _run_dt_y_test()
     ./mindie_ms_coordinator_ut --gtest_filter=StressTestSingleNode.TestSingleNodeOpenAIStressTC02
     ./mindie_ms_coordinator_ut --gtest_filter=TestMetricsPDSeparate.TestPDSeparateMetricsTC02
 
-    
+
 }
 
 

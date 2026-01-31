@@ -14,9 +14,9 @@ set -e
 BASE_PATH=$(cd $(dirname $0); pwd)
 PROJECT_PATH=$BASE_PATH/../../../..
 PROJECT_PATH=`realpath $PROJECT_PATH`
-MINDIE_MS_SRC_PATH=$PROJECT_PATH/mindie_service/management_service
+MINDIE_MS_SRC_PATH=$PROJECT_PATH/mindie_motor/src
 MINDIE_MS_TEST_PATH=$PROJECT_PATH/tests/ms
-MINDIE_MS_OUTPUT_PATH=$PROJECT_PATH/mindie_service/management_service/output
+MINDIE_MS_OUTPUT_PATH=$PROJECT_PATH/mindie_motor/src/output
 MINDIE_MS_OPEN_SOURCE_PATH=/open_source
 
 source ${MINDIE_MS_TEST_PATH}/ms_test_util.sh

@@ -132,7 +132,7 @@ std::string GetMSControllerBinPath()
 {
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
-    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_service/management_service/output/bin/ms_controller");
+    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_motor/src/output/bin/ms_controller");
     return jsonPath;
 }
 
@@ -140,7 +140,7 @@ std::string GetMSCoordinatorBinPath()
 {
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
-    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_service/management_service/output/bin/ms_coordinator");
+    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_motor/src/output/bin/ms_coordinator");
     return jsonPath;
 }
 
@@ -149,7 +149,7 @@ std::string GetMSControllerConfigJsonPath()
 {
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
-    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_service/management_service/config/ms_controller.json");
+    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_motor/src/config/ms_controller.json");
     return jsonPath;
 }
 
@@ -174,7 +174,7 @@ std::string GetServerRequestHandlerTestJsonPath()
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
     std::string jsonPath = GetAbsolutePath(parentPath,
-        "mindie_service/management_service/output/config/ms_controller_1.json");
+        "mindie_motor/src/output/config/ms_controller_1.json");
     return jsonPath;
 }
 
@@ -183,7 +183,7 @@ std::string GetProbeServerTestJsonPath()
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
     std::string jsonPath = GetAbsolutePath(parentPath,
-        "mindie_service/management_service/output/config/ms_controller_2.json");
+        "mindie_motor/src/output/config/ms_controller_2.json");
     return jsonPath;
 }
 
@@ -192,7 +192,7 @@ std::string GetAlarmManagerTestJsonPath()
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
     std::string jsonPath = GetAbsolutePath(parentPath,
-        "mindie_service/management_service/output/config/ms_controller_3.json");
+        "mindie_motor/src/output/config/ms_controller_3.json");
     return jsonPath;
 }
 
@@ -201,7 +201,7 @@ std::string GetModelConfigJsonPath()
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
     std::string jsonPath = GetAbsolutePath(parentPath,
-        "mindie_service/management_service/config/model_config/llama2-70B.json");
+        "mindie_motor/src/config/model_config/llama2-70B.json");
     return jsonPath;
 }
 
@@ -210,7 +210,7 @@ std::string GetMachineConfigJsonPath()
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
     std::string jsonPath = GetAbsolutePath(parentPath,
-        "mindie_service/management_service/config/machine_config/800IA2.json");
+        "mindie_motor/src/config/machine_config/800IA2.json");
     return jsonPath;
 }
 
@@ -285,7 +285,7 @@ std::string GetMSDeployConfigJsonPath()
 {
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
-    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_service/management_service/config/infer_server.json");
+    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_motor/src/config/infer_server.json");
     return jsonPath;
 }
 
@@ -301,7 +301,7 @@ std::string GetMSCoordinatorConfigJsonPath()
 {
     std::string exePath = GetExecutablePath();
     std::string parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
-    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_service/management_service/config/ms_coordinator.json");
+    std::string jsonPath = GetAbsolutePath(parentPath, "mindie_motor/src/config/ms_coordinator.json");
     return jsonPath;
 }
 
@@ -872,7 +872,7 @@ std::string GetHSECEASYPATH()
     if (thirdPartyDir == nullptr) {
         std::string exePath = GetExecutablePath();
         parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
-        jsonPath = GetAbsolutePath(parentPath, "mindie_service/management_service/build/open_source/kmc/lib");
+        jsonPath = GetAbsolutePath(parentPath, "mindie_motor/src/build/open_source/kmc/lib");
     } else {
         parentPath = thirdPartyDir;
         jsonPath = GetAbsolutePath(parentPath, "hseceasy/lib");
@@ -1036,11 +1036,11 @@ std::string GetLdLibraryPath()
     } else {
         std::string exePath = GetExecutablePath();
         parentPath = GetParentPath(GetParentPath(GetParentPath(GetParentPath(exePath))));
-        jsonPath = GetAbsolutePath(parentPath, "mindie_service/management_service/output/lib");
-        jsonPath += ":" + GetAbsolutePath(parentPath, "mindie_service/management_service/build/open_source/openssl");
-        jsonPath += ":" + GetAbsolutePath(parentPath, "mindie_service/management_service/build/open_source/kmc/lib");
+        jsonPath = GetAbsolutePath(parentPath, "mindie_motor/src/output/lib");
+        jsonPath += ":" + GetAbsolutePath(parentPath, "mindie_motor/src/build/open_source/openssl");
+        jsonPath += ":" + GetAbsolutePath(parentPath, "mindie_motor/src/build/open_source/kmc/lib");
         jsonPath += ":" + GetAbsolutePath(parentPath,
-            "mindie_service/management_service/build/open_source/libboundscheck/lib");
+            "mindie_motor/src/build/open_source/libboundscheck/lib");
     }
 
     return jsonPath;

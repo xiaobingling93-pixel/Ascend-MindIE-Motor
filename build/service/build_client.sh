@@ -12,7 +12,7 @@
 set -e
 
 SERVICE_ROOT_DIR=$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")
-CLIENT_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_service/client
+CLIENT_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_motor/client
 CLIENT_DST_DIR="$SERVICE_ROOT_DIR"/install/dist
 
 rm -rf ${CLIENT_DST_DIR}/mindieclient*

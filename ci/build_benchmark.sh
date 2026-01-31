@@ -13,7 +13,7 @@ set -e
 BUILD_DIR=$(dirname $(readlink -f $0))
 PROJ_ROOT_DIR=${BUILD_DIR}/..
 rm -rf ${PROJ_ROOT_DIR}/dist/mindiebenchmark*
-cd ${PROJ_ROOT_DIR}/mindie_service/tools/benchmark
+cd ${PROJ_ROOT_DIR}/mindie_motor/tools/benchmark
 if [ ! -f "mindiebenchmark/benchmark_run.py" ]; then
     echo "Benchmark_run.py main script doesn't exist. Quit installing."
     exit 1

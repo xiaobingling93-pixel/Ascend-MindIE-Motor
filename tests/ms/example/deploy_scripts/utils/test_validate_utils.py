@@ -14,7 +14,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from mindie_service.management_service.example.deploy_scripts.utils.validate_config import (
+from mindie_motor.src.example.deploy_scripts.utils.validate_config import (
     is_valid_path,
     is_valid_integer,
     is_valid_bool,

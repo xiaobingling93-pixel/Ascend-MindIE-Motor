@@ -13,7 +13,7 @@ set -e
 
 SERVICE_ROOT_DIR=$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")
 
-BENCHMARK_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_service/tools/benchmark
+BENCHMARK_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_motor/tools/benchmark
 BENCHMARK_DST_DIR="$SERVICE_ROOT_DIR"/install/dist
 mkdir -p "$BENCHMARK_DST_DIR"
 

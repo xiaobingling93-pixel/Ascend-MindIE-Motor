@@ -18,9 +18,9 @@ TEST_MODE=${3:-""}
 BASE_PATH=$(cd $(dirname $0); pwd)
 PROJECT_PATH=$BASE_PATH/../..
 PROJECT_PATH=`realpath $PROJECT_PATH`
-MINDIE_MS_SRC_PATH=$PROJECT_PATH/mindie_service/management_service
+MINDIE_MS_SRC_PATH=$PROJECT_PATH/mindie_motor/src
 MINDIE_MS_TEST_PATH=$PROJECT_PATH/tests/ms
-MINDIE_MS_OUTPUT_PATH=$PROJECT_PATH/mindie_service/management_service/output
+MINDIE_MS_OUTPUT_PATH=$PROJECT_PATH/mindie_motor/src/output
 
 # 检查环境变量 BUILD_MIES_3RDPARTY_INSTALL_DIR 是否为空或未定义
 if [ -z "${BUILD_MIES_3RDPARTY_INSTALL_DIR}" ]; then
