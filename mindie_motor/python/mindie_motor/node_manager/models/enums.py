@@ -24,6 +24,7 @@ class NodeRunningStatus(str, Enum):
     PAUSE = "pause"
     READY = "ready"
     INIT = "init"
+    BUSY = "busy"
 
 
 class ControllerCmd(str, Enum):
@@ -45,8 +46,9 @@ class ServiceStatus(Enum):
     SERVICE_ABNORMAL = 2
     SERVICE_PAUSE = 3
     SERVICE_INIT = 4
+    SERVICE_BUSY = 5
 
 
 class ControllerReply(Enum):
-    SEND_COORDINATOR_ALARM_SUCCESS = 0
-    SEND_COORDINATOR_ALARM_UNREACHEABLE = -1
+    SEND_CONTROLLER_ALARM_SUCCESS = 0
+    SEND_CONTROLLER_ALARM_UNREACHEABLE = 1

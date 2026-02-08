@@ -45,6 +45,8 @@ class FaultManager(metaclass=_SingletonMeta):
             # key:cmd, value:[[cmd执行之前的状态,cmd执行之后的状态]]
             "PAUSE_ENGINE": [
                 [NodeRunningStatus.NORMAL.value, NodeRunningStatus.PAUSE.value],
+                [NodeRunningStatus.ABNORMAL.value, NodeRunningStatus.PAUSE.value],
+                [NodeRunningStatus.BUSY.value, NodeRunningStatus.PAUSE.value],
             ],
             "REINIT_NPU": [
                 [NodeRunningStatus.PAUSE.value, NodeRunningStatus.READY.value],

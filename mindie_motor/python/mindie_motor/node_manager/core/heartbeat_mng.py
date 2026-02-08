@@ -14,7 +14,6 @@ import subprocess
 import threading
 from collections import deque
 from datetime import datetime
-import threading
 import time
 from typing import List, Tuple, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -28,6 +27,8 @@ from node_manager.common.logging import Log
 from node_manager.daemon_manager.llm_daemon_starter import llm_daemon_manager
 
 DATA_STR = "data"
+SIMULATE_FAILED_ERROR_CODE = "[MIE04E071106] "
+MAX_CONTINUOUS_SIMULATE_FAIL_COUNT = 5
 
 
 class NodeStatusMonitor(metaclass=_SingletonMeta):
@@ -45,15 +46,34 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
             max_workers=GeneralConfig().server_engine_cnt
         )
         
+        self.simulate_fail_count = [0] * GeneralConfig().server_engine_cnt # 记录每一个endpoint连续虚推失败的次数
+        
     @staticmethod
-    def _extract_error_data_to_ctrl(res_all):
-        data_lst = []
+    def _extract_error_info(res_all):
+        error_info = []
         for res in res_all:
-            tmp_dict = res.get("data", {}).get("error", {})
-            if tmp_dict != {}:
-                data_lst.append(tmp_dict)
-        return data_lst
-
+            errors = res.get("data", {}).get("errors", [])
+            error_info.append(errors)
+        return error_info
+    
+    @staticmethod
+    def _is_error_info_empty(error_info: List[List[dict]]) -> bool:
+        """检查error_info是否为空"""
+        for ep_errors in error_info:
+            if ep_errors:
+                return False
+        return True
+    
+    @staticmethod
+    def _has_llm_daemon_err_code(error_info: List[List[dict]]) -> bool:
+        """检查error_info中是否包含llm_daemon上报的故障码"""
+        for ep_errors in error_info:
+            for error in ep_errors:
+                created_by = error.get("createdBy", "")
+                if created_by == "daemon":
+                    return True
+        return False
+    
     @staticmethod
     def _is_child_process_detected() -> bool:
         process_infos = subprocess.run(
@@ -99,9 +119,11 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
             return NodeRunningStatus.ABNORMAL.value
         if ServiceStatus.SERVICE_ABNORMAL.value in engine_state_cur[1:]:
             return NodeRunningStatus.ABNORMAL.value
-        # 只剩init 和 normal
+        # 只剩init, normal和busy
         if ServiceStatus.SERVICE_INIT.value in engine_state_cur[1:]:
             return NodeRunningStatus.INIT.value
+        if ServiceStatus.SERVICE_BUSY.value in engine_state_cur[1:]:
+            return NodeRunningStatus.BUSY.value
         all_normal = all(
             s == ServiceStatus.SERVICE_NORMAL.value for s in engine_state_cur[1:]
         )
@@ -128,7 +150,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
                 continue
             now = datetime.utcnow().strftime("%Y/%m/%d %H:%M:%S")
             cur_success = [res.get("success", None) for res in result_all]
-            if False in cur_success or None in cur_success:  # 查询ep status请求发送失败,此时不向ctrler上报异常
+            if False in cur_success or None in cur_success:  # 查询ep status请求发送失败, 此时不向ctrler上报异常
                 cur_msg = ""
                 for res in result_all:
                     cur_msg = cur_msg + res.get("msg", "")
@@ -140,25 +162,85 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
             self.engine_state.append([now] + cur_state)# 更新heartbeat_mng的engine_state
             node_running_status = self._parse_engine_state()
             self.heartbeat_mng.set_running_status(node_running_status)
-            if (node_running_status == NodeRunningStatus.ABNORMAL.value): # abnormal情况下发异常给ctrler 并自杀
-                if self.heartbeat_mng.heartbeat_check_allowed:
-                    self.logger.error("Detected ABNORMAL status while heartbeat_check_allowed is True.")
-                    while self._is_child_process_detected():
-                        self.logger.info("Daemon process detected, waiting for it to terminate")
-                        time.sleep(1)
-                    self.logger.error(f"Start to Terminating all processes")
-                    llm_daemon_manager.terminate_all_processes()
-                data_lst = self._extract_error_data_to_ctrl(result_all)
-                ctl_rpl = self._send_ep_state_info_to_ctrler(data_lst)
-                if ctl_rpl.get(DATA_STR, None) == ControllerReply.SEND_COORDINATOR_ALARM_SUCCESS.value:
-                    self.logger.info(f"controller has successfully send alarm to coordinator")
-                elif ctl_rpl.get(DATA_STR, None) == ControllerReply.SEND_COORDINATOR_ALARM_UNREACHEABLE.value:
-                    self.logger.info(f"controller sending alarm to coordinator failed, service unreachable")
-                else:
-                    self.logger.error(f"controller reply not found,ctrl_rpl={ctl_rpl}")
-            time.sleep(self.query_interval)
             
-    def _send_ep_state_info_to_ctrler(self, error_info):
+            # 提取心跳中的故障码
+            error_info = self._extract_error_info(result_all)
+
+            # abnormal情况下结合error_info检查是否需要终止daemon
+            if self.heartbeat_mng.heartbeat_check_allowed:
+                if node_running_status == NodeRunningStatus.ABNORMAL.value:
+                    self._process_abnormal_status_with_error_info(error_info)
+                else:
+                    self._reset_simulate_fail_count()
+
+            self._send_error_info_to_ctrler(error_info)
+
+            time.sleep(self.query_interval)
+    
+    def _process_abnormal_status_with_error_info(self, error_info: List[List[dict]]):
+        terminate_daemon_reason = ""
+        
+        # 检查是否有daemon上报的故障码
+        if self._has_llm_daemon_err_code(error_info):
+            terminate_daemon_reason = "error code from llm daemon"
+        
+        # 更新虚推失败计数器
+        self._update_simulate_fail_count(error_info)
+        
+        # 检查是否有endpoint虚推失败次数超过阈值
+        if self._is_simulate_fail_count_exceeded(error_info):
+            if terminate_daemon_reason == "":
+                terminate_daemon_reason = f"{MAX_CONTINUOUS_SIMULATE_FAIL_COUNT} times failed simulate"
+
+        # 当前是否需要终止daemon
+        if terminate_daemon_reason != "":
+            self.logger.error("Detected ABNORMAL status with " + terminate_daemon_reason +
+                ", while heartbeat_check_allowed is True, should terminate all processes.")
+            
+            # 当终止daemon的原因为daemon进程上报故障码时, 等待daemon保存coredump文件并自杀后, 再终止所有子进程
+            if terminate_daemon_reason == "error code from llm daemon":
+                while self._is_child_process_detected():
+                    self.logger.info("Daemon process detected, waiting for it to terminate")
+                    time.sleep(1)
+            llm_daemon_manager.terminate_all_processes()
+
+    def _update_simulate_fail_count(self, error_info: List[List[dict]]):
+        """更新每个endpoint的虚推失败计数器"""
+        if len(error_info) != GeneralConfig().server_engine_cnt:
+            self.logger.error(f"Size of error info is not equal to endpoint count {GeneralConfig().server_engine_cnt}.")
+            return
+        
+        for idx, errors in enumerate(error_info):
+            is_simulate_fail = False
+            for error in errors:
+                created_by = error.get("createdBy", "")
+                if created_by != "health_checker":
+                    continue
+                err_code = error.get("errCode", "")
+                if err_code != SIMULATE_FAILED_ERROR_CODE:
+                    continue
+                is_simulate_fail = True
+                self.simulate_fail_count[idx] += 1
+                break
+            if not is_simulate_fail and \
+                self.simulate_fail_count[idx] < MAX_CONTINUOUS_SIMULATE_FAIL_COUNT:
+                self.simulate_fail_count[idx] = 0
+
+        self.logger.warning(f"Continuous simulate fail count for each endpoint is: "
+                                    f"{self.simulate_fail_count}.")
+
+    def _reset_simulate_fail_count(self):
+        """重置每个endpoint的虚推失败计数器"""
+        self.simulate_fail_count = [0] * GeneralConfig().server_engine_cnt
+
+    def _is_simulate_fail_count_exceeded(self, error_info: List[List[dict]]) -> bool:
+        """检查是否有endpoint连续虚推失败次数超过阈值"""
+        for count in self.simulate_fail_count:
+            if count >= MAX_CONTINUOUS_SIMULATE_FAIL_COUNT:
+                return True
+        return False
+            
+    def _send_error_info_to_ctrler(self, error_info):
         """
         向controller发送ep的非健康状态(如果查询状态信息失败,不向controller上报)
 
@@ -169,12 +251,8 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
                             [
                                 {
                                     "timestamp": 1231234123,
-                                    "srrCode": "sss",
-                                    "createBy": "engine",
-                                    "addition": {
-                                        "device_ip": "10.0.2.81",
-                                        "device_id": 0,
-                                    }
+                                    "errCode": "sss",
+                                    "createdBy": "engine",
                                 }
                             ]
                             ,
@@ -189,9 +267,22 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
                 "msg": str        // 请求失败时，错误信息
             }
         """
+
+        # error_info为空,不向controller上报
+        if self._is_error_info_empty(error_info):
+            return
+
         if not self.client:
             self.client = Client()
-        return self.client.send_ctrler_error_info(error_info)
+        resp = self.client.send_ctrler_error_info(error_info)
+
+        if resp.get(DATA_STR, {}).get("status", "") == str(ControllerReply.SEND_CONTROLLER_ALARM_SUCCESS.value):
+            self.logger.info(f"Has successfully send alarm to controller.")
+        elif resp.get(DATA_STR, {}).get("status", "") == \
+            str(ControllerReply.SEND_CONTROLLER_ALARM_UNREACHEABLE.value):
+            self.logger.info(f"Failed to send alarm to controller, service unreachable")
+        else:
+            self.logger.error(f"Controller reply not found, ctrl_rpl={resp}")
 
 
 class HeartBeatMng(metaclass=_SingletonMeta):
