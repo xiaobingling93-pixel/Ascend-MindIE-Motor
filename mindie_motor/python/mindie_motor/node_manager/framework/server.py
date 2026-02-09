@@ -16,7 +16,8 @@ import socket
 import ssl
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from node_manager.common.utils import _SingletonMeta
 from node_manager.routes.server_api import router
@@ -27,10 +28,39 @@ from node_manager.framework.utils.cert_utils import CA_CERTS, TLS_CERT, TLS_KEY
 logger = Log(__name__).getlog()
 
 DEFAULT_IP = '127.0.0.1'
-DEFAULT_PORT = 3456
+DEFAULT_PORT = 1028
 IPV4 = 4
 IPV6 = 6
 MAX_CONNECTED_CLIENT_NUM = 8
+MAX_REQUEST_BODY_SIZE = 1 * 1024 * 1024  # 1MB
+MAX_REQUEST_HEADER_SIZE = 8 * 1024  # 8KB
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, application, max_body_size: int = MAX_REQUEST_BODY_SIZE, 
+            max_header_size: int = MAX_REQUEST_HEADER_SIZE):
+        super().__init__(application)
+        self._max_body_size = max_body_size
+        self._max_header_size = max_header_size
+
+    async def dispatch(self, request: Request, call_next):
+        # Check header size
+        header_size = sum(len(k.encode()) + len(v.encode()) for k, v in request.headers.items())
+        if header_size > self._max_header_size:
+            raise HTTPException(status_code=431, detail="Request Header Fields Too Large")
+
+        # Check body size via Content-Length header
+        content_length = request.headers.get('content-length')
+        if content_length:
+            try:
+                body_size = int(content_length)
+                if body_size > self._max_body_size:
+                    raise HTTPException(status_code=413, detail="Request Entity Too Large")
+            except ValueError:
+                pass  # Invalid content-length, let it pass or handle as needed
+
+        response = await call_next(request)
+        return response
 
 
 class Server(FastAPI, metaclass=_SingletonMeta):
@@ -38,6 +68,7 @@ class Server(FastAPI, metaclass=_SingletonMeta):
         super().__init__()
         self._server = None
         self.include_router(router)
+        self.add_middleware(RequestSizeLimitMiddleware)
 
     @property
     def should_exit(self) -> bool:
@@ -55,7 +86,7 @@ class Server(FastAPI, metaclass=_SingletonMeta):
 
         ip = os.getenv('POD_IP', DEFAULT_IP)
         port = ms_node_manager.get('node_manager_port', DEFAULT_PORT)
-        enable_tls_verify = ms_node_manager.get('tls_config', {}).get('server_tls_enable', False)
+        enable_tls_verify = ms_node_manager.get('tls_config', {}).get('server_tls_enable', True)
         http_type = 'https' if enable_tls_verify else 'http'
         password = None
         sock = None
@@ -63,17 +94,21 @@ class Server(FastAPI, metaclass=_SingletonMeta):
             if enable_tls_verify:
                 tls_items = ms_node_manager.get('tls_config', {}).get('server_tls_items', {})
                 password = CertUtil.validate_cert_and_decrypt_password(tls_items)
+                # 创建SSL上下文（此方法内部会在使用password_bytes后立即清零）
+                context = CertUtil.create_ssl_context(tls_items, password)
+                logger.info('Server TLS context initialized successfully')
                 config = uvicorn.Config(
                     self,
                     reload=False,
-                    ssl_keyfile=tls_items.get(TLS_KEY),
-                    ssl_certfile=tls_items.get(TLS_CERT),
-                    ssl_keyfile_password=password,
-                    ssl_ca_certs=tls_items.get(CA_CERTS),
-                    ssl_cert_reqs=ssl.CERT_REQUIRED,
-                    ssl_ciphers='ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS'
+                    timeout_keep_alive=30,
+                    timeout_graceful_shutdown=5,
+                    workers=2,
+                    limit_concurrency=100,
+                    limit_max_requests=1000,
+                    backlog=100
                 )
                 config.load()
+                config.ssl = context
                 logger.info('TLS configuration loaded successfully for server')
                 CertUtil.secure_delete_password(password)
                 password = None

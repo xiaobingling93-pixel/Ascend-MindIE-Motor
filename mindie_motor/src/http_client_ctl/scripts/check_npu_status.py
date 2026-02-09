@@ -59,7 +59,8 @@ def __is_npu_health():
             continue
         if ("status" in resource):
             for item in resource["status"]:
-                if (item["health"] is not None) and (item["health"] is False):
+                health = item.get("health")
+                if (health is not None) and (health is False):
                     return False
 
     return True

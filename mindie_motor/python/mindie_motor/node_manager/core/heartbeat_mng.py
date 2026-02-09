@@ -13,7 +13,7 @@
 import subprocess
 import threading
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 from typing import List, Tuple, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -47,7 +47,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
         )
         
         self.simulate_fail_count = [0] * GeneralConfig().server_engine_cnt # 记录每一个endpoint连续虚推失败的次数
-        
+
     @staticmethod
     def _extract_error_info(res_all):
         error_info = []
@@ -55,7 +55,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
             errors = res.get("data", {}).get("errors", [])
             error_info.append(errors)
         return error_info
-    
+
     @staticmethod
     def _is_error_info_empty(error_info: List[List[dict]]) -> bool:
         """检查error_info是否为空"""
@@ -63,7 +63,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
             if ep_errors:
                 return False
         return True
-    
+
     @staticmethod
     def _has_llm_daemon_err_code(error_info: List[List[dict]]) -> bool:
         """检查error_info中是否包含llm_daemon上报的故障码"""
@@ -73,7 +73,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
                 if created_by == "daemon":
                     return True
         return False
-    
+
     @staticmethod
     def _is_child_process_detected() -> bool:
         process_infos = subprocess.run(
@@ -148,7 +148,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
                 self.logger.error(f"heartBeatMng is Paused while no cmd is executing")
                 time.sleep(self.query_interval)
                 continue
-            now = datetime.utcnow().strftime("%Y/%m/%d %H:%M:%S")
+            now = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
             cur_success = [res.get("success", None) for res in result_all]
             if False in cur_success or None in cur_success:  # 查询ep status请求发送失败, 此时不向ctrler上报异常
                 cur_msg = ""
@@ -162,7 +162,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
             self.engine_state.append([now] + cur_state)# 更新heartbeat_mng的engine_state
             node_running_status = self._parse_engine_state()
             self.heartbeat_mng.set_running_status(node_running_status)
-            
+
             # 提取心跳中的故障码
             error_info = self._extract_error_info(result_all)
 
@@ -176,17 +176,17 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
             self._send_error_info_to_ctrler(error_info)
 
             time.sleep(self.query_interval)
-    
+
     def _process_abnormal_status_with_error_info(self, error_info: List[List[dict]]):
         terminate_daemon_reason = ""
-        
+
         # 检查是否有daemon上报的故障码
         if self._has_llm_daemon_err_code(error_info):
             terminate_daemon_reason = "error code from llm daemon"
-        
+
         # 更新虚推失败计数器
         self._update_simulate_fail_count(error_info)
-        
+
         # 检查是否有endpoint虚推失败次数超过阈值
         if self._is_simulate_fail_count_exceeded(error_info):
             if terminate_daemon_reason == "":
@@ -196,7 +196,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
         if terminate_daemon_reason != "":
             self.logger.error("Detected ABNORMAL status with " + terminate_daemon_reason +
                 ", while heartbeat_check_allowed is True, should terminate all processes.")
-            
+
             # 当终止daemon的原因为daemon进程上报故障码时, 等待daemon保存coredump文件并自杀后, 再终止所有子进程
             if terminate_daemon_reason == "error code from llm daemon":
                 while self._is_child_process_detected():
@@ -209,7 +209,7 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
         if len(error_info) != GeneralConfig().server_engine_cnt:
             self.logger.error(f"Size of error info is not equal to endpoint count {GeneralConfig().server_engine_cnt}.")
             return
-        
+
         for idx, errors in enumerate(error_info):
             is_simulate_fail = False
             for error in errors:

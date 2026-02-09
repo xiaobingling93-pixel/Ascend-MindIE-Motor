@@ -142,3 +142,16 @@ class PathCheck(PathCheckBase):
             cls.logger = Log(__name__).getlog()
         cls.logger.error(error_message)
         return False
+
+
+def validate_port_range(port, min_port=1024, max_port=65535):
+    """
+    校验端口范围
+    :param port: 端口号（可以是字符串或整数）
+    :param min_port: 最小端口号，默认1024
+    :param max_port: 最大端口号，默认65535
+    :raises ValueError: 如果端口不在指定范围内
+    """
+    port_int = int(port)
+    if port_int < min_port or port_int > max_port:
+        raise ValueError(f"Port {port} is not in the range of {min_port}-{max_port}")

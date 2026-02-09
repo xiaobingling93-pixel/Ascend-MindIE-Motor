@@ -13,7 +13,7 @@
 import os
 import json
 import ipaddress
-from node_manager.common.utils import _SingletonMeta
+from node_manager.common.utils import _SingletonMeta, validate_port_range
 from node_manager.common.logging import Log
 from ..framework.utils.json_util import JsonUtil
 
@@ -102,10 +102,12 @@ class GeneralConfig(metaclass=_SingletonMeta):
                 continue
             _config = JsonUtil.read_json_file(os.path.join(self.config_path, f_name))
             self._check_server_config_valid(_config)
+            management_port = _config[SERVER_CONFIG][MANAGEMENT_PORT]
+            validate_port_range(management_port)
             if f_name == "config.json":
-                single_server_port = _config[SERVER_CONFIG][MANAGEMENT_PORT]
+                single_server_port = management_port
             else:
-                server_engine_port_list.append(_config[SERVER_CONFIG][MANAGEMENT_PORT])
+                server_engine_port_list.append(management_port)
             self.dist_dp_server_enabled = _config[SERVER_CONFIG]["distDPServerEnabled"]
         if not server_engine_port_list:
             server_engine_port_list.append(single_server_port)
@@ -128,7 +130,9 @@ class GeneralConfig(metaclass=_SingletonMeta):
             raise KeyError(
                 "[Config] Controller Server Port is Missing in Config File"
             )
-        return self.http_server_config["controller_alarm_port"]
+        controller_alarm_port = self.http_server_config["controller_alarm_port"]
+        validate_port_range(controller_alarm_port)
+        return controller_alarm_port
 
     def _load_heartbeat_interval(self):
         interval_key = "heartbeat_interval_seconds"

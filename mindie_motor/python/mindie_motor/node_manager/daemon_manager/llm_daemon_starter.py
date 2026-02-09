@@ -17,6 +17,7 @@ import subprocess
 from typing import List, Dict, Optional
 
 from node_manager.common.utils import _SingletonMeta, PathCheck
+from node_manager.common.mindie_cpu_binding import query_cpu_binding
 from .base_daemon_manager import BaseDaemonManager
 
 
@@ -85,23 +86,12 @@ class LLMDaemonManager(BaseDaemonManager, metaclass=_SingletonMeta):
         return pci_type_to_device_type.get(pci_type, None)
 
     def get_cpu_binding(self, instance_id: int) -> Optional[str]:
-        binding_file = os.path.join(self.mies_install_path,
-                                    'examples/kubernetes_deploy_scripts/boot_helper/mindie_cpu_binding.py')
-        if not PathCheck.check_path_full(binding_file, mode=0o550):
-            raise RuntimeError(f"Invalid CPU binding script: {binding_file}")
         device_type = self.get_device_type()
         if not device_type:
             self.logger.warning("Unable to determine device type for CPU binding")
             return None
         try:
-            cmd = [
-                'python3',
-                binding_file,
-                str(instance_id),
-                '--device_type', device_type
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            return result.stdout.strip()
+            return query_cpu_binding(instance_id, device_type)
         except Exception as e:
             self.logger.error(f"Failed to get CPU binding for instance {instance_id}: {e}")
             return None

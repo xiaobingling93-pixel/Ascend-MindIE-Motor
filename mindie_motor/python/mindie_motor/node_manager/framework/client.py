@@ -42,7 +42,7 @@ class Client:
             self.engine_map[index] = engine_port
 
         ms_node_manager = self.config.http_server_config
-        self.enable_tls_verify = ms_node_manager.get('tls_config', {}).get('client_tls_enable', False)
+        self.enable_tls_verify = ms_node_manager.get('tls_config', {}).get('client_tls_enable', True)
         if self.enable_tls_verify:
             self.protocol = 'https://'
             self._initialize_tls_context(ms_node_manager)
@@ -158,3 +158,6 @@ class Client:
                 SUCCESS: False,
                 MSG: f"unexpected error occurred: {e}, url : {url}",
             }
+        finally:
+            if session:
+                session.close()
