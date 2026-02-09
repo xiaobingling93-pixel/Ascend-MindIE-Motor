@@ -166,10 +166,17 @@ metadata:
   namespace: mindie
 spec:
   ports:
-    - nodePort: 31015
+    - name: infer-http
+      nodePort: 31015
       port: 1025
       protocol: TCP
       targetPort: 1025
+    # metrics端口映射
+#    - name: metrics-http
+#      nodePort: 31016
+#      port: 1028
+#      protocol: TCP
+#      targetPort: 1028
   selector:
     app: mindie-ms-coordinator
   sessionAffinity: None

@@ -214,7 +214,7 @@ if [ $# -eq 0 ]; then
             source $CANN_INSTALL_PATH/ascend-toolkit/set_env.sh
         fi
         om_adapter Coordinator &
-        mindie_motor_coordinator "$POD_IP" 1025 "$POD_IP" 1026
+        mindie_motor_coordinator "$POD_IP" "$POD_IP"
     fi
 elif [ $# -eq 1 ]; then
     if [[ "$1" == "single_container" ]]; then
@@ -270,8 +270,7 @@ elif [ $# -eq 1 ]; then
         # pull up coordinator
         export MINDIE_MS_COORDINATOR_CONFIG_FILE_PATH="$CONFIG_DIR/ms_coordinator.json"
         om_adapter Coordinator &
-        # 1025为ServerConfig中配置的业务端口
-        mindie_motor_coordinator "$POD_IP" 1025 &
+        mindie_motor_coordinator "$POD_IP" &
 
         # pull up controller
         export GLOBAL_RANK_TABLE_FILE_PATH="$MIES_INSTALL_PATH/global_ranktable.json"

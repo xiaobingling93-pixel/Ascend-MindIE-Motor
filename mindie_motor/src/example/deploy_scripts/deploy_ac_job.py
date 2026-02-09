@@ -626,9 +626,15 @@ def modify_coordinator_yaml_app_v1(data, config):
     modify_coordinator_mount(data, config)
 
 
-def modify_coordinator_yaml_v1(data, config):
+def modify_coordinator_yaml_v1(data, config, coordinator_config):
     data[METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
     data[METADATA][NAMESPACE] = config[CONFIG_JOB_ID]
+    for port in data[SPEC]["ports"]:
+        port_name = port.get(NAME, "")
+        if port_name == "infer-http":
+            if "predict_port" in coordinator_config["http_config"]:
+                port["port"] = int(coordinator_config["http_config"]["predict_port"])
+                port["targetPort"] = int(coordinator_config["http_config"]["predict_port"])
 
 
 def modify_server_yaml_v1(data, config, index, pd_flag):
@@ -933,8 +939,8 @@ def generator_yaml(input_yaml, output_file, json_path, single_doc=False, env_con
     """
 
     # 读取用户配置
-    json_config = read_json(json_path)
-    json_config = json_config["deploy_config"]
+    json_config_original = read_json(json_path)
+    json_config = json_config_original["deploy_config"]
     check_config(json_config)
     ext = dict()
     if "controller" in input_yaml:
@@ -944,9 +950,10 @@ def generator_yaml(input_yaml, output_file, json_path, single_doc=False, env_con
         update_shell_script_safely(BOOT_SHELL_PATH, env_config, "mindie_ms_controller_env", "set_controller_env")
         write_yaml(data, output_file, single_doc)
     elif "coordinator" in input_yaml:
+        coordinator_config = json_config_original["mindie_ms_coordinator_config"]
         data = load_yaml(input_yaml, single_doc)
         modify_coordinator_yaml_app_v1(data[0], json_config)
-        modify_coordinator_yaml_v1(data[1], json_config)
+        modify_coordinator_yaml_v1(data[1], json_config, coordinator_config)
         update_shell_script_safely(BOOT_SHELL_PATH, env_config, "mindie_ms_coordinator_env", "set_coordinator_env")
         modify_coordinator_yaml_replicas(data[0], json_config)
         write_yaml(data, output_file, single_doc)
@@ -1298,11 +1305,11 @@ def update_controller_tls_info(modify_result_dict, deploy_config):
     return modify_result_dict
 
 
-def modify_controller_json(modify_config, ms_controller_json, out_json, deploy_config):
+def modify_controller_json(modify_config, ms_controller_json, deploy_config):
     original_config = read_json(ms_controller_json)
     modify_result_dict = update_dict(original_config, modify_config)
     modify_result_dict = update_controller_tls_info(modify_result_dict, deploy_config)
-    write_json_data(modify_result_dict, out_json)
+    return modify_result_dict
 
 
 def update_coordinator_tls_info(modify_result_dict, deploy_config):
@@ -1341,14 +1348,14 @@ def update_coordinator_tls_info(modify_result_dict, deploy_config):
     return modify_result_dict
 
 
-def modify_coordinator_json(modify_config, ms_coordinator_json, out_json, deploy_config):
+def modify_coordinator_json(modify_config, ms_coordinator_json, deploy_config):
     original_config = read_json(ms_coordinator_json)
     modify_result_dict = update_dict(original_config, modify_config)
     modify_result_dict = update_coordinator_tls_info(modify_result_dict, deploy_config)
     if "coordinator_backup_cfg" in deploy_config:
         modify_result_dict["backup_config"]["function_enable"] =\
             deploy_config["coordinator_backup_cfg"]["function_enable"]
-    write_json_data(modify_result_dict, out_json)
+    return modify_result_dict
 
 
 def update_node_manager_tls_info(modify_result_dict, deploy_config):
@@ -1365,10 +1372,10 @@ def update_node_manager_tls_info(modify_result_dict, deploy_config):
     return modify_result_dict
 
 
-def modify_node_manager_json(ms_node_manager_json, out_json, deploy_config):
+def modify_node_manager_json(ms_node_manager_json, deploy_config):
     original_config = read_json(ms_node_manager_json)
     modify_result_dict = update_node_manager_tls_info(original_config, deploy_config)
-    write_json_data(modify_result_dict, out_json)
+    return modify_result_dict
 
 
 def get_path_with_separator(path):
@@ -1462,7 +1469,7 @@ def set_max_iter_times(ms_config_p_json, ms_config_d_json):
         logging.warning("Using default value of maxIterTimes")
 
 
-def modify_config_p_json(modify_config, ms_config_p_json, ms_config_d_json, out_json, deploy_config):
+def modify_config_p_json(modify_config, ms_config_p_json, ms_config_d_json, deploy_config):
     original_config = read_json(ms_config_p_json)
     modify_result_dict = update_dict(original_config, modify_config)
     update_server_tls_info(modify_result_dict, deploy_config)
@@ -1470,14 +1477,14 @@ def modify_config_p_json(modify_config, ms_config_p_json, ms_config_d_json, out_
     # Synchronize the maxIterTimes of Node D to Node P.
     set_max_iter_times(modify_result_dict, ms_config_d_json)
     
-    write_json_data(modify_result_dict, out_json)
+    return modify_result_dict
 
 
-def modify_config_d_json(modify_config, ms_config_d_json, out_json, deploy_config):
+def modify_config_d_json(modify_config, ms_config_d_json, deploy_config):
     original_config = read_json(ms_config_d_json)
     modify_result_dict = update_dict(original_config, modify_config)
     update_server_tls_info(modify_result_dict, deploy_config)
-    write_json_data(modify_result_dict, out_json)
+    return modify_result_dict
 
 
 def modify_http_client_json(modify_config, ms_client_ctl_json, out_json, deploy_config):
@@ -1553,11 +1560,11 @@ def update_ms_controller_config(controller_config, p_server_config, d_server_con
 
 
 def modify_controller_config(out_controller_config):
-    out_p_server_config = read_json(ms_config_p_json)
-    out_d_server_config = read_json(ms_config_d_json)
+    out_p_server_config = read_json(ms_config_p_json_path)
+    out_d_server_config = read_json(ms_config_d_json_path)
     updated = update_ms_controller_config(out_controller_config, out_p_server_config, out_d_server_config,
                                           deploy_config)
-    write_json_data(updated, ms_controller_json)
+    write_json_data(updated, ms_controller_json_path)
 
 
 def save_elastic_scaling_config(config, output):
@@ -1693,13 +1700,13 @@ if __name__ == '__main__':
     server_output_yaml = os.path.join(output_root_path, 'deployment', 'mindie_server')
     singer_container_input_yaml = os.path.join(deploy_yaml_root_path, 'single_container_init.yaml')
     singer_container_output_yaml = os.path.join(output_root_path, 'deployment', 'mindie_service_single_container.yaml')
-    ms_controller_json = os.path.join(output_root_path, 'conf', 'ms_controller.json')
-    ms_coordinator_json = os.path.join(output_root_path, 'conf', 'ms_coordinator.json')
-    ms_config_p_json = os.path.join(output_root_path, 'conf', 'config_p.json')
-    ms_config_d_json = os.path.join(output_root_path, 'conf', 'config_d.json')
+    ms_controller_json_path = os.path.join(output_root_path, 'conf', 'ms_controller.json')
+    ms_coordinator_json_path = os.path.join(output_root_path, 'conf', 'ms_coordinator.json')
+    ms_config_p_json_path = os.path.join(output_root_path, 'conf', 'config_p.json')
+    ms_config_d_json_path = os.path.join(output_root_path, 'conf', 'config_d.json')
     ms_client_ctl_json = os.path.join(output_root_path, 'conf', 'http_client_ctl.json')
     server_config_path = os.path.join(output_root_path, 'conf', 'config.json')
-    ms_node_manager_json = os.path.join(output_root_path, 'conf', 'node_manager.json')
+    ms_node_manager_json_path = os.path.join(output_root_path, 'conf', 'node_manager.json')
 
     init_ms_controller_json = os.path.join(input_conf_root_path, 'ms_controller.json')
     init_ms_coordinator_json = os.path.join(input_conf_root_path, 'ms_coordinator.json')
@@ -1731,31 +1738,50 @@ if __name__ == '__main__':
         env_config = read_json(env_config_path)
         env_config["MODEL_ID"] = obtain_model_id(deploy_config)
         save_elastic_scaling_config(deploy_config, output_root_path)
-        modify_controller_json(json_config["mindie_ms_controller_config"], init_ms_controller_json, ms_controller_json,
+        ms_controller_json = modify_controller_json(json_config["mindie_ms_controller_config"], init_ms_controller_json,
                                deploy_config)
-        modify_coordinator_json(json_config["mindie_ms_coordinator_config"], init_ms_coordinator_json,
-                                ms_coordinator_json, deploy_config)
-        modify_config_p_json(json_config["mindie_server_prefill_config"], init_ms_config_p_json,
-                             json_config["mindie_server_decode_config"], ms_config_p_json, deploy_config)
-        modify_config_d_json(json_config["mindie_server_decode_config"], init_ms_config_d_json, ms_config_d_json,
+        ms_coordinator_json = modify_coordinator_json(json_config["mindie_ms_coordinator_config"],
+                                init_ms_coordinator_json, deploy_config)
+        ms_config_p_json = modify_config_p_json(json_config["mindie_server_prefill_config"], init_ms_config_p_json,
+                             json_config["mindie_server_decode_config"], deploy_config)
+        ms_config_d_json = modify_config_d_json(json_config["mindie_server_decode_config"], init_ms_config_d_json,
                              deploy_config)
-        modify_node_manager_json(init_ms_node_manager_json, ms_node_manager_json, deploy_config)
+        ms_node_manager_json = modify_node_manager_json(init_ms_node_manager_json, deploy_config)
+
+        # 修改各组件依赖其他组件的端口
+        if "controller_alarm_port" in ms_controller_json:
+            ms_coordinator_json["http_config"]["alarm_port"] = str(ms_controller_json["controller_alarm_port"])
+            ms_node_manager_json["controller_alarm_port"] = int(ms_controller_json["controller_alarm_port"])
+        if "node_manager_port" in ms_node_manager_json:
+            ms_controller_json["node_manager_port"] = int(ms_node_manager_json["node_manager_port"])
+        if "manage_port" in ms_coordinator_json["http_config"]:
+            ms_controller_json["mindie_ms_coordinator_port"] = int(ms_coordinator_json["http_config"]["manage_port"])
+        if "external_port" in ms_coordinator_json["http_config"]:
+            ms_controller_json["mindie_ms_coordinator_external_port"] = int(
+                ms_coordinator_json["http_config"]["external_port"])
+
+        write_json_data(ms_controller_json, ms_controller_json_path)
+        write_json_data(ms_coordinator_json, ms_coordinator_json_path)
+        write_json_data(ms_node_manager_json, ms_node_manager_json_path)
+        write_json_data(ms_config_p_json, ms_config_p_json_path)
+        write_json_data(ms_config_d_json, ms_config_d_json_path)
 
         http_json = json_config["http_client_ctl_config"] if "http_client_ctl_config" in json_config else dict()
         modify_http_client_json(http_json, init_ms_client_ctl_json, ms_client_ctl_json,
                                 deploy_config)
         # 非跨机不区分
-        modify_config_p_json(json_config["mindie_server_prefill_config"], init_server_config_path,
-                             json_config["mindie_server_decode_config"], server_config_path, deploy_config)
-        CONFIG_MODEL_NAME = get_config_model_name(ms_config_p_json, server_config_path)
-        out_controller_config = read_json(ms_controller_json)
+        server_config = modify_config_p_json(json_config["mindie_server_prefill_config"], init_server_config_path,
+                             json_config["mindie_server_decode_config"], deploy_config)
+        write_json_data(server_config, server_config_path)
+        CONFIG_MODEL_NAME = get_config_model_name(ms_config_p_json_path, server_config_path)
+        out_controller_config = read_json(ms_controller_json_path)
         INIT_PORT = out_controller_config["initial_dist_server_port"]
         modify_controller_config(out_controller_config)
         generator_yaml(controller_input_yaml, controller_output_yaml, user_config_path, True, env_config)
 
         # Check coordinator memory config before generating YAML
         coordinator_yaml_data = load_yaml(coordinator_input_yaml, False)[0]
-        check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json)
+        check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_path)
 
         generator_yaml(coordinator_input_yaml, coordinator_output_yaml, user_config_path, False, env_config)
         generator_yaml(server_input_yaml, server_output_yaml, user_config_path, False, env_config)

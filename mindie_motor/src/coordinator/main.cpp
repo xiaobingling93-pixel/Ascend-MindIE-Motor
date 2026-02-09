@@ -21,9 +21,9 @@ using namespace MINDIE::MS;
 static bool ParsingParams(int argc, char *argv[])
 {
     std::string errorCode = GetErrorCode(ErrorType::INVALID_INPUT, CoordinatorFeature::MAIN);
-    if (argc > 5) { // 超过5个参数
-        LOG_E("[%s] [Coordinator] Incorrect usage. The expected format is: %s <predict_ip> <predict_port> "
-            "<manage_ip> <manage_port>", errorCode.c_str(), argv[0]);
+    if (argc > 3) { // 超过3个参数
+        LOG_E("[%s] [Coordinator] Incorrect usage. The expected format is: %s <predict_ip> <manage_ip>",
+            errorCode.c_str(), argv[0]);
         return false;
     }
     if (argc > 1) {
@@ -31,28 +31,14 @@ static bool ParsingParams(int argc, char *argv[])
             LOG_E("[%s] [Coordinator] Argument 'predict_ip' is invalid.", errorCode.c_str());
             return false;
         }
-        Configure::Singleton()->httpConfig.predIp = std::string(argv[1]);
+        Configure::Singleton()->httpConfig.predIp = std::string(argv[1]); // 1：入参索引值，对应predIp
     }
     if (argc > 2) { // 超过2个参数
-        if (!IsValidPortString(std::string(argv[2]))) {
-            LOG_E("[%s] [Coordinator] Argument 'predict_port' is invalid.", errorCode.c_str());
-            return false;
-        }
-        Configure::Singleton()->httpConfig.predPort = std::string(argv[2]); // 索引值2
-    }
-    if (argc > 3) { // 超过3个参数
-        if (!IsValidIp(std::string(argv[3]), Configure::Singleton()->httpConfig.allAllZeroIpListening)) {
+        if (!IsValidIp(std::string(argv[2]), Configure::Singleton()->httpConfig.allAllZeroIpListening)) {
             LOG_E("[%s] [Coordinator] Argument 'manage_ip' is invalid.", errorCode.c_str());
             return false;
         }
-        Configure::Singleton()->httpConfig.managementIp = std::string(argv[3]); // 索引值3
-    }
-    if (argc > 4) { // 超过4个参数
-        if (!IsValidPortString(std::string(argv[4]))) {
-            LOG_E("[%s] [Coordinator] Argument 'manage_port' is invalid.", errorCode.c_str());
-            return false;
-        }
-        Configure::Singleton()->httpConfig.managementPort = std::string(argv[4]); // 索引值4
+        Configure::Singleton()->httpConfig.managementIp = std::string(argv[2]); // 2：入参索引值，对应managementIp
     }
     return true;
 }
