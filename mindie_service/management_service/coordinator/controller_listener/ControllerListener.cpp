@@ -425,6 +425,8 @@ int32_t ControllerListener::IdsTraverse(const std::vector<uint64_t> &ids, const 
             IdsAddOrUpdate(addVec, updateVec, it, id);
         }
         Remove(removeVec);
+        LOG_I("[ControllerListener] instance traverse success, add %zu instance, update %zu instance, "
+                "remove %zu instance.\n", addVec.size(), updateVec.size(), removeVec.size());
         return 0;
     } catch (const std::exception &e) {
         LOG_E("[%s] [ControllerListener] Exception while processing instance identifiers: %s.\n",
