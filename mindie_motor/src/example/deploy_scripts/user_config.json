@@ -15,6 +15,7 @@
     "image_name": "mindie:dev-2.0.RC1.B091-800I-A2-py311-ubuntu22.04-aarch64",
     "job_id": "mindie",
     "hardware_type": "800I_A2",
+    "deploy_motor_on_intelligent_server": false,
     "mindie_env_path": "./conf/mindie_env.json",
     "mindie_host_log_path": "/root/log/ascend_log",
     "mindie_container_log_path": "/root/mindie",

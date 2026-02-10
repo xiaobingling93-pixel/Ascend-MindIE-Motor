@@ -27,8 +27,8 @@ spec:
             jobID: xxxx      #推理任务的名称，用户需配置，追加，xxxx默认mindie
         spec:                              # 以下数据之前是怎么样的就怎么样
           nodeSelector:
-            masterselector: dls-master-node
-            #accelerator: huawei-Ascend910
+            # masterselector: dls-master-node
+            # accelerator: huawei-Ascend910
             # machine-id: "7"
           terminationGracePeriodSeconds: 0
           automountServiceAccountToken: false

@@ -79,6 +79,9 @@ GROUP_ID = "group_id"
 SERVER_LIST = 'server_list'
 GROUP_LIST = "group_list"
 HARDWARE_TYPE = 'hardware_type'
+MIX_DEPLOY = 'deploy_motor_on_intelligent_server'
+HARD_AFFINITY = 'requiredDuringSchedulingIgnoredDuringExecution'
+SOFT_AFFINITY = 'preferredDuringSchedulingIgnoredDuringExecution'
 CONTAINER_IP = 'container_ip'
 DEVICE_LOGICAL_ID = "device_logical_id"
 PATH = "path"
@@ -118,6 +121,8 @@ NODE_SELECTOR = "nodeSelector"
 MINDIE_ROLE = "mindie-role"
 NAME_FLAG = " -n "
 SERVER_CONFIG = "ServerConfig"
+APP_NAME_CONTROLLER = "mindie-ms-controller"
+APP_NAME_COORDINATOR = "mindie-ms-coordinator"
 NAMESPACE = "namespace"
 TP = "tp"
 DP = "dp"
@@ -149,6 +154,8 @@ CA_CERT = "ca_cert"
 CCAE_TLS_ITEMS = "ccae_tls_items"
 CONTROLLER_BACKUP_CFG = "controller_backup_cfg"
 CONTROLLER_BACKUP_SW = "function_sw"
+COORDINATOR_BACKUP_CFG = "coordinator_backup_cfg"
+COORDINATOR_BACKUP_SW = "function_enable"
 POD_NUM_ZERO = 0
 DEPLOY_CONFIG = "deploy_config"
 DELETE_F_D = "kubectl delete -f "
@@ -463,7 +470,7 @@ def safe_kubectl_create_configmap(name, from_file=None, from_literal=None, names
 def is_valid_mount(mount_path):
     if len(mount_path) == 0 or mount_path is None or "$" in mount_path:
         return False
-    
+
     forbidden_paths = ["/var/run/docker.sock"]
     if any(mount_path.startswith(fp) for fp in forbidden_paths):
         return False
@@ -602,6 +609,7 @@ def modify_controller_yaml(data, config, env_config):
 
 
 def modify_controller_replicas(data, config):
+    modify_controller_yaml_affinity(data, config)
     if CONTROLLER_BACKUP_CFG in deploy_config and CONTROLLER_BACKUP_SW in deploy_config[CONTROLLER_BACKUP_CFG]:
         backup_switch = config[CONTROLLER_BACKUP_CFG][CONTROLLER_BACKUP_SW]
         master_cnt = data[SPEC][REPLICA_SPECS][MASTER][REPLICAS]
@@ -610,6 +618,25 @@ def modify_controller_replicas(data, config):
             data[SPEC][REPLICA_SPECS][WORKER] = copy.deepcopy(data[SPEC][REPLICA_SPECS][MASTER])
             worker_cnt = data[SPEC][REPLICA_SPECS][WORKER][REPLICAS]
         data[SPEC][RUN_POLICY][SCHEDULING_POLICY][MIN_AVAILABLE] = master_cnt + worker_cnt
+
+
+def modify_controller_yaml_affinity(data, config):
+    template = data[SPEC][REPLICA_SPECS][MASTER].setdefault("template", CommentedMap())
+    pod_spec = template.setdefault('spec', CommentedMap())
+    affinity = pod_spec.setdefault('affinity', CommentedMap())
+    # 不开昇腾部署时植入controller与智算节点反亲和(即通算节点亲和)
+    if MIX_DEPLOY not in config or config[MIX_DEPLOY] is not True:
+        affinity['nodeAffinity'] = create_ascend_anti_affinity()
+    pod_anti_affinity = CommentedMap()
+    # 开启controller主备时植入controller内部反亲和
+    if CONTROLLER_BACKUP_CFG in config and CONTROLLER_BACKUP_SW in config[CONTROLLER_BACKUP_CFG]:
+        backup_switch = config[CONTROLLER_BACKUP_CFG][CONTROLLER_BACKUP_SW]
+        if backup_switch is True or str(backup_switch).lower() == "true":
+            pod_anti_affinity[HARD_AFFINITY] = create_internal_anti_affinity(APP_NAME_CONTROLLER)
+    # 默认植入coordinator和controller之间软性反亲和
+    pod_anti_affinity[SOFT_AFFINITY] = create_external_soft_anti_affinity(APP_NAME_COORDINATOR)
+    affinity['podAntiAffinity'] = pod_anti_affinity
+    return data
 
 
 def modify_coordinator_yaml_app_v1(data, config):
@@ -858,16 +885,32 @@ def modify_coordinator_env(data, config):
 
 
 def modify_coordinator_yaml_replicas(data, config):
-    if "coordinator_backup_cfg" in config and config["coordinator_backup_cfg"]["function_enable"]:
-        data = modify_coordinator_yaml_affinity(data)
+    data = modify_coordinator_yaml_affinity(data, config)
+    if COORDINATOR_BACKUP_CFG in config and config[COORDINATOR_BACKUP_CFG][COORDINATOR_BACKUP_SW]:
         data[SPEC][REPLICA_SPECS][WORKER] = copy.deepcopy(data[SPEC][REPLICA_SPECS][MASTER])
         data[SPEC]["runPolicy"]["schedulingPolicy"]["minAvailable"] = 2
 
 
-def modify_coordinator_yaml_affinity(data):
-    template = data[SPEC]["replicaSpecs"]["Master"].setdefault("template", CommentedMap())
+def modify_coordinator_yaml_affinity(data, config):
+    template = data[SPEC][REPLICA_SPECS][MASTER].setdefault("template", CommentedMap())
     pod_spec = template.setdefault('spec', CommentedMap())
     affinity = pod_spec.setdefault('affinity', CommentedMap())
+    # 不开昇腾部署时植入coordinator与智算节点反亲和(即通算节点亲和)
+    if MIX_DEPLOY not in config or config[MIX_DEPLOY] is not True:
+        affinity['nodeAffinity'] = create_ascend_anti_affinity()
+    pod_anti_affinity = CommentedMap()
+    # 开启coordinator主备时植入coordinator内部反亲和
+    if COORDINATOR_BACKUP_CFG in config and COORDINATOR_BACKUP_SW in config[COORDINATOR_BACKUP_CFG]:
+        backup_switch = config[COORDINATOR_BACKUP_CFG][COORDINATOR_BACKUP_SW]
+        if backup_switch is True or str(backup_switch).lower() == "true":
+            pod_anti_affinity[HARD_AFFINITY] = create_internal_anti_affinity(APP_NAME_COORDINATOR)
+    # 默认植入coordinator和controller之间软性反亲和
+    pod_anti_affinity[SOFT_AFFINITY] = create_external_soft_anti_affinity(APP_NAME_CONTROLLER)
+    affinity['podAntiAffinity'] = pod_anti_affinity
+    return data
+
+
+def create_ascend_anti_affinity():
     node_affinity = CommentedMap()
     required_node_terms = CommentedSeq()
     match_expressions = CommentedSeq()
@@ -880,13 +923,15 @@ def modify_coordinator_yaml_affinity(data):
     required_node_terms.append(CommentedMap([
         ('matchExpressions', match_expressions)
     ]))
-    node_affinity['requiredDuringSchedulingIgnoredDuringExecution'] = CommentedMap([
+    node_affinity[HARD_AFFINITY] = CommentedMap([
         ('nodeSelectorTerms', required_node_terms)
     ])
-    affinity['nodeAffinity'] = node_affinity
-    pod_anti_affinity = CommentedMap()
+    logging.warning("Inject ascend anti_affinity, make true that you have enough general computing server!")
+    return node_affinity
+
+
+def create_internal_anti_affinity(app_label):
     anti_affinity_terms = CommentedSeq()
-    app_label = "mindie-ms-coordinator"
     label_selector = CommentedMap([
         ('matchExpressions', CommentedSeq([
             CommentedMap([
@@ -901,9 +946,31 @@ def modify_coordinator_yaml_affinity(data):
         ('labelSelector', label_selector),
         ('topologyKey', 'kubernetes.io/hostname')
     ]))
-    pod_anti_affinity['requiredDuringSchedulingIgnoredDuringExecution'] = anti_affinity_terms
-    affinity['podAntiAffinity'] = pod_anti_affinity
-    return data
+    logging.warning(f"Inject {app_label} anti_affinity, make true that you have at lease more than two servers!")
+    return anti_affinity_terms
+
+
+def create_external_soft_anti_affinity(app_label):
+    label_selector = CommentedMap([
+        ('matchExpressions', CommentedSeq([
+            CommentedMap([
+                ('key', 'app'),
+                ('operator', 'In'),
+                ('values', [app_label])
+            ])
+        ]))
+    ])
+    prefer_anti_affinity_terms = CommentedMap([
+        ('labelSelector', label_selector),
+        ('topologyKey', 'kubernetes.io/hostname')
+    ])
+    other_anti_affinity_terms = CommentedSeq()
+    other_anti_affinity_terms.append(CommentedMap([
+        ('weight', 100),
+        ('podAffinityTerm', prefer_anti_affinity_terms)
+    ]))
+    logging.info(f"Inject soft anti_affinity between {APP_NAME_COORDINATOR} and {APP_NAME_CONTROLLER}!")
+    return other_anti_affinity_terms
 
 
 def modify_env_common(data, env_key, env_value, has_worker=False):
@@ -918,7 +985,7 @@ def modify_env_common(data, env_key, env_value, has_worker=False):
 def modify_server_env(data, config, env_config, pd_flag):
     modify_env_common(data, "MINDIE_LOG_CONFIG_PATH", config[CONTAINER_LOG_PATH], True)
     modify_env_common(data, "INITIAL_DP_SERVER_PORT", DoubleQuotedScalarString(str(INIT_PORT)), True)
-    
+
     # 根据pd_flag导入对应的环境变量
     if pd_flag == "p":
         modify_env_common(data, "ROLE", "p", True)
@@ -1069,7 +1136,7 @@ def exec_cm_create_kubectl_multi(deploy_config, out_path):
                                   from_file="./gen_ranktable_helper/global_ranktable.json", namespace=job_id)
     safe_kubectl_create_configmap("python-file-utils",
                                   from_file="./utils/file_utils.py", namespace=job_id)
-    
+
     # 创建配置相关的configmaps
     safe_kubectl_create_configmap("mindie-ms-coordinator-config",
                                  from_file=os.path.join(out_conf_path, "ms_coordinator.json"), namespace=job_id)
@@ -1191,8 +1258,8 @@ def exec_all_kubectl_multi(deploy_config, out_path, user_config_path, model_id):
         ext[D_DEPLOY_SERVER] = DECODE_DEPLOY
     ext['namespace'] = deploy_config[CONFIG_JOB_ID]
     p_instance_total, d_instance_total = obtain_server_instance_total(deploy_config)
-    ext["coordinator_backup_enable"] = deploy_config.get("coordinator_backup_cfg", {}).get("function_enable", False)
-    ext["controller_backup_enable"] = deploy_config.get("controller_backup_cfg", {}).get("function_sw", False)
+    ext["coordinator_backup_enable"] = deploy_config.get(COORDINATOR_BACKUP_CFG, {}).get(COORDINATOR_BACKUP_SW, False)
+    ext["controller_backup_enable"] = deploy_config.get(CONTROLLER_BACKUP_CFG, {}).get(CONTROLLER_BACKUP_SW, False)
     generate_global_ranktable(False, p_instance_total, d_instance_total, True, ext)
 
     annotate_cmd = (f"kubectl annotate pods --all -n {deploy_config[CONFIG_JOB_ID]} "
@@ -1236,14 +1303,13 @@ def exec_all_kubectl_singer(config_dict, out_path):
     safe_kubectl_create_configmap("boot-bash-script", from_file="./boot_helper/boot.sh", namespace=job_id)
     safe_kubectl_create_configmap("config-file-path", from_file=out_conf_path, namespace=job_id)
     safe_kubectl_create_configmap("python-script-gen-config-single-container",
-                                 from_file="./boot_helper/gen_config_single_container.py", namespace=job_id)
+                                  from_file="./boot_helper/gen_config_single_container.py", namespace=job_id)
     # 应用YAML文件
     yaml_file = os.path.join(out_conf_path, "deployment", "mindie_service_single_container.yaml")
     safe_kubectl_apply(yaml_file, job_id)
 
 
 def assign_cert_files(ms_tls_config, deploy_config_tls_config, cert_type, is_controller=True):
-
     """
     assign cert file config by deploy_config
     :param ms_tls_config: ms config dict
@@ -1352,9 +1418,9 @@ def modify_coordinator_json(modify_config, ms_coordinator_json, deploy_config):
     original_config = read_json(ms_coordinator_json)
     modify_result_dict = update_dict(original_config, modify_config)
     modify_result_dict = update_coordinator_tls_info(modify_result_dict, deploy_config)
-    if "coordinator_backup_cfg" in deploy_config:
-        modify_result_dict["backup_config"]["function_enable"] =\
-            deploy_config["coordinator_backup_cfg"]["function_enable"]
+    if COORDINATOR_BACKUP_CFG in deploy_config:
+        modify_result_dict["backup_config"][COORDINATOR_BACKUP_SW] = \
+            deploy_config[COORDINATOR_BACKUP_CFG][COORDINATOR_BACKUP_SW]
     return modify_result_dict
 
 
@@ -1476,7 +1542,7 @@ def modify_config_p_json(modify_config, ms_config_p_json, ms_config_d_json, depl
 
     # Synchronize the maxIterTimes of Node D to Node P.
     set_max_iter_times(modify_result_dict, ms_config_d_json)
-    
+
     return modify_result_dict
 
 
