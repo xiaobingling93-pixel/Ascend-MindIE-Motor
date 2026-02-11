@@ -68,8 +68,7 @@ int32_t DIGSRequest::UpdateState2DecodeEnd(uint64_t prefillEndTime, uint64_t dec
 {
     auto state = state_.load(std::memory_order_acquire);
     if (state == DIGSReqState::PREFILL_END or state == DIGSReqState::ALLOCATED) {
-        LOG_I("[DIGS] Update state to DECODE_END(5) from %d, Request ID: %s State: %d, decode token count: %zu",
-              static_cast<int32_t>(state),
+        LOG_I("[DIGS] Update state to DECODE_END(5), Request ID: %s State: %d, decode token count: %zu",
               reqId_.c_str(),
               static_cast<int32_t>(state),
               outputLength);
