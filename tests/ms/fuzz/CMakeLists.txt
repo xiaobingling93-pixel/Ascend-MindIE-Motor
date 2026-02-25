@@ -6,7 +6,7 @@ set(ENABLE_CONTROLLER ON)
 set(ENABLE_COORDINATOR ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-set(MINDIE_MS_SRC_ROOT ${MINDIE_SERVICE_ROOT}/mindie_service/management_service)
+set(MINDIE_MS_SRC_ROOT ${MINDIE_SERVICE_ROOT}/mindie_motor/src)
 set(MINDIE_MS_TEST_ROOT "${MINDIE_SERVICE_ROOT}/tests/ms")
 
 set(GOOGLT_TEST_DIR ${MINDIE_MS_TEST_ROOT}/open_source/googletest)
@@ -15,7 +15,7 @@ set(CPPFREEMOCK_DIR ${MINDIE_MS_TEST_ROOT}/open_source/emock)
 set(CPP_STUB_DIR ${MINDIE_MS_TEST_ROOT}/open_source/cpp-stub)
 
 set(SECODEFUZZ_TEST_DIR ${MINDIE_MS_TEST_ROOT}/open_source/secodefuzz)
-set(HTTP_CLIENT_CTL_DIR ${MINDIE_SERVICE_ROOT}/mindie_service/utils/http_client_ctl)
+set(HTTP_CLIENT_CTL_DIR ${MINDIE_SERVICE_ROOT}/mindie_motor/src/http_client_ctl)
 
 if(DEFINED ENV{GLOBAL_ABI_VERSION})
     add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=$ENV{GLOBAL_ABI_VERSION})

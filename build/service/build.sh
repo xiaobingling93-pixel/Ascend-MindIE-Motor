@@ -22,8 +22,8 @@ echo "GLOBAL_ABI_VERSION: ${GLOBAL_ABI_VERSION}"
 
 echo "SERVICE_ROOT_DIR: $SERVICE_ROOT_DIR"
 
-MS_DIR="$SERVICE_ROOT_DIR"/mindie_service/management_service
-HTTP_CLIENT_CTL_DIR="$SERVICE_ROOT_DIR"/mindie_service/utils/http_client_ctl
+MS_DIR="$SERVICE_ROOT_DIR"/mindie_motor/src
+HTTP_CLIENT_CTL_DIR="$SERVICE_ROOT_DIR"/mindie_motor/src/http_client_ctl
 THIRD_PARTY_DIR="$SERVICE_ROOT_DIR"/third_party
 
 MS_TEST_DIR="$SERVICE_ROOT_DIR"/tests/ms
@@ -56,7 +56,7 @@ function parse_arguments() {
 }
 
 function build_benchmark() {
-    BENCHMARK_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_service/tools/benchmark
+    BENCHMARK_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_motor/tools/benchmark
     BENCHMARK_DST_DIR="$SERVICE_ROOT_DIR"/install/dist
     mkdir -p "$BENCHMARK_DST_DIR"
 
@@ -81,7 +81,7 @@ function build_benchmark() {
 }
 
 function build_client() {
-    CLIENT_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_service/client
+    CLIENT_SRC_DIR="$SERVICE_ROOT_DIR"/mindie_motor/client
     CLIENT_DST_DIR="$SERVICE_ROOT_DIR"/install/dist
 
     rm -rf ${CLIENT_DST_DIR}/mindieclient*

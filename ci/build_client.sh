@@ -14,7 +14,7 @@ BUILD_DIR=$(dirname $(readlink -f $0))
 PROJ_ROOT_DIR=${BUILD_DIR}/..
 
 rm -rf ${PROJ_ROOT_DIR}/dist/mindieclient*
-cd ${PROJ_ROOT_DIR}/mindie_service/client
+cd ${PROJ_ROOT_DIR}/mindie_motor/client
 MindIEServiceVersion="1.0.0"
 if [ ! -f "${PROJ_ROOT_DIR}"/../CI/config/version.ini ]; then
     echo "version.ini is not existed !"

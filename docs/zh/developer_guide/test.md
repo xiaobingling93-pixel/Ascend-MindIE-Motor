@@ -23,7 +23,7 @@
    ```
 
    ```
-   set(HTTP_CLIENT_CTL_DIR ${MindIE_SERVICE_ROOT}/mindie_service/utils/http_client_ctl)
+   set(HTTP_CLIENT_CTL_DIR ${MindIE_SERVICE_ROOT}/mindie_motor/src/http_client_ctl)
    ```
 
    加上下面这行代码：

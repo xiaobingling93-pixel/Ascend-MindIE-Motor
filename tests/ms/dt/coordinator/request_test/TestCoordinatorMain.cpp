@@ -73,17 +73,13 @@ TEST_F(TestCoordinatorMain, TestMainTCa)
     Stub stub;
     stub.set(ADDR(MINDIE::MS::Coordinator, Run), ReturnZeroStub);
     std::string predIp = "127.0.0.1";
-    std::string predPort = "8080";
     std::string managementIp = "127.0.0.1";
-    std::string managementPort = "8081";
 
-    CommandLine command = {predIp, predPort, managementIp, managementPort};
+    CommandLine command = {predIp, managementIp};
     CallMain(command);
 
     EXPECT_EQ(Configure::Singleton()->httpConfig.predIp, predIp);
-    EXPECT_EQ(Configure::Singleton()->httpConfig.predPort, predPort);
     EXPECT_EQ(Configure::Singleton()->httpConfig.managementIp, managementIp);
-    EXPECT_EQ(Configure::Singleton()->httpConfig.managementPort, managementPort);
 }
 
 TEST_P(TestCoordinatorMainCommand, TestMainTCa)

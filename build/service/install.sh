@@ -302,13 +302,13 @@ function install_process() {
         fi
         install_to_path
         if [ $? -eq 0 ]; then
-            print "INFO" "Finish install run for mindie_service."
+            print "INFO" "Finish install run for mindie_motor."
             [ -f "${default_install_path}/set_env.sh" ] && print "INFO" "Remember to source atb/set_env.sh and atb-models/set_env.sh before source our set_env.sh."
         fi
     else
         install_to_path
         if [ $? -eq 0 ]; then
-            print "INFO" "Finish install run for mindie_service."
+            print "INFO" "Finish install run for mindie_motor."
             [ -f "${default_install_path}/set_env.sh" ] && print "INFO" "Remember to source atb/set_env.sh and atb-models/set_env.sh before source our set_env.sh."
         fi
     fi

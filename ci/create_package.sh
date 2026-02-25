@@ -114,18 +114,18 @@ function copy_mindie_service() {
     cp -f om_adapter-*-py3-*.whl node_manager-*-py3-*.whl \
           "$RELEASE_TMP_DIR"/bin/
     mkdir -p "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf
-    cp -rf "$MINDIE_SERVICE_SRC_DIR"/mindie_service/management_service/example/deploy_scripts/*  "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/
+    cp -rf "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/example/deploy_scripts/*  "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/
 
-    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_service/management_service/config/ms_coordinator.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
-    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_service/management_service/config/ms_controller.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
-    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_service/management_service/config/node_manager.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
-    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_service/utils/http_client_ctl/config/http_client_ctl.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/config/ms_coordinator.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/config/ms_controller.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/config/node_manager.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/http_client_ctl/config/http_client_ctl.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
     chmod 640 "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/*.json
     chmod 640 "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/boot_helper/boot.sh
     chmod 640 "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/user_config.json
     chmod 640 "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/deployment/*.yaml
 
-    cd "$MINDIE_SERVICE_SRC_DIR"/mindie_service/utils/http_client_ctl
+    cd "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/http_client_ctl
     mkdir -p "$RELEASE_TMP_DIR"/scripts/http_client_ctl
     cp -rf scripts/* "$RELEASE_TMP_DIR"/scripts/http_client_ctl/
 

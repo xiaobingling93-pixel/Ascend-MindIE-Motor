@@ -1,4 +1,0 @@
-pydantic
-uvicorn
-fastapi
-requests>=2.25.0

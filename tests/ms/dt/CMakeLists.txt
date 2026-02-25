@@ -9,7 +9,7 @@ set(ENABLE_SECURITYUTILS ON)
 set(ENABLE_MINDIE_SERVICE_UTILS ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-set(MINDIE_MS_SRC_ROOT ${MINDIE_SERVICE_ROOT}/mindie_service/management_service)
+set(MINDIE_MS_SRC_ROOT ${MINDIE_SERVICE_ROOT}/mindie_motor/src)
 set(MINDIE_MS_TEST_ROOT "${MINDIE_SERVICE_ROOT}/tests/ms")
 
 if(DEFINED ENV{BUILD_MIES_3RDPARTY_INSTALL_DIR})
@@ -39,7 +39,7 @@ endif()
 
 set(GOOGLT_TEST_DIR ${BUILD_MIES_3RDPARTY_INSTALL_DIR}/googletest)
 set(CPP_STUB_DIR ${BUILD_MIES_3RDPARTY_INSTALL_DIR}/cpp-stub)
-set(HTTP_CLIENT_CTL_DIR ${MINDIE_SERVICE_ROOT}/mindie_service/utils/http_client_ctl)
+set(HTTP_CLIENT_CTL_DIR ${MINDIE_SERVICE_ROOT}/mindie_motor/src/http_client_ctl)
 
 include_directories(
     # 测试

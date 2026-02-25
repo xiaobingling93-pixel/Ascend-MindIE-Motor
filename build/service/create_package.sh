@@ -90,15 +90,15 @@ function copy_mindie_service() {
           "$RELEASE_TMP_DIR"/bin/
 
     mkdir -p "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf
-    cp -rf "$SERVICE_ROOT_DIR"/mindie_service/management_service/example/deploy_scripts/*  "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/
+    cp -rf "$SERVICE_ROOT_DIR"/mindie_motor/src/example/deploy_scripts/*  "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/
 
-    cp -f "$SERVICE_ROOT_DIR"/mindie_service/management_service/config/ms_coordinator.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
-    cp -f "$SERVICE_ROOT_DIR"/mindie_service/management_service/config/ms_controller.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
-    cp -f "$SERVICE_ROOT_DIR"/mindie_service/management_service/config/node_manager.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
-    cp -f "$SERVICE_ROOT_DIR"/mindie_service/utils/http_client_ctl/config/http_client_ctl.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$SERVICE_ROOT_DIR"/mindie_motor/src/config/ms_coordinator.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$SERVICE_ROOT_DIR"/mindie_motor/src/config/ms_controller.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$SERVICE_ROOT_DIR"/mindie_motor/src/config/node_manager.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
+    cp -f "$SERVICE_ROOT_DIR"/mindie_motor/src/http_client_ctl/config/http_client_ctl.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
     chmod 640 "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/*.json
 
-    cd "$SERVICE_ROOT_DIR"/mindie_service/utils/http_client_ctl
+    cd "$SERVICE_ROOT_DIR"/mindie_motor/src/http_client_ctl
     mkdir -p "$RELEASE_TMP_DIR"/scripts/http_client_ctl
     cp -rf scripts/* "$RELEASE_TMP_DIR"/scripts/http_client_ctl/
 

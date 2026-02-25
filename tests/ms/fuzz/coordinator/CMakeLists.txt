@@ -48,7 +48,7 @@ include_directories(
 )
 
 set(COORDINATOR_SOURCE_DIR ${MINDIE_MS_SRC_ROOT}/coordinator)
-set(HTTP_CLIENT_CTL_DIR ${MINDIE_SERVICE_ROOT}/mindie_service/utils/http_client_ctl)
+set(HTTP_CLIENT_CTL_DIR ${MINDIE_SERVICE_ROOT}/mindie_motor/src/http_client_ctl)
 file(GLOB_RECURSE COORDINATOR_SOURCE_DIR "${COORDINATOR_SOURCE_DIR}/*.cpp" "${COORDINATOR_SOURCE_DIR}/*.c" "${COORDINATOR_SOURCE_DIR}/*.cxx")
 
 file(GLOB COMMON_SOURCE_DIR

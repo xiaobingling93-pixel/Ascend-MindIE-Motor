@@ -71,7 +71,7 @@ def walk_directory(directory):
                 if not should_exclude(file_path):
                     process_file(file_path)
 
-ms_path = PROJECT_ROOT / 'mindie_service/management_service'
+ms_path = PROJECT_ROOT / 'mindie_motor/src'
 util_path = PROJECT_ROOT / 'utils'
 
 walk_directory(ms_path)
