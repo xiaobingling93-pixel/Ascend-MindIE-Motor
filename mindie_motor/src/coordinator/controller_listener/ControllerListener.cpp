@@ -43,11 +43,11 @@ void ControllerListener::StopMasterCheck()
 
 void ControllerListener::Master2Worker()
 {
-    auto &instanceInfos = instancesRecord->GetInstanceInfos();
+    const auto& instanceInfos = instancesRecord->GetInstanceInfos();
     for (auto it = instanceInfos.begin(); it != instanceInfos.end(); ++it) {
-        if (it->second->role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
-            std::string ip = it->second->ip;
-            std::string port = it->second->port;
+        if (it->second.role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
+            std::string ip = it->second.ip;
+            std::string port = it->second.port;
             CloseConnection(ip, port);
         }
     }

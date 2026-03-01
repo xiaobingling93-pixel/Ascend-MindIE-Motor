@@ -713,12 +713,12 @@ void RequestListener::CheckMasterAndCreateLinkWithDNode()
 
 void RequestListener::CreateLinkWithDNode()
 {
-    auto &instanceInfos = instancesRecord->GetInstanceInfos();
+    const auto& instanceInfos = instancesRecord->GetInstanceInfos();
     int32_t ret = 0;
     for (auto it = instanceInfos.begin(); it != instanceInfos.end(); ++it) {
-        if (it->second && it->second->role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
-            std::string ip = it->second->ip;
-            std::string port = it->second->port;
+        if (it->second.role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
+            std::string ip = it->second.ip;
+            std::string port = it->second.port;
             {
                 std::lock_guard<std::mutex> lock(linkMutex);
                 if (!requestRepeater->CheckLinkWithDNode(ip, port)) {

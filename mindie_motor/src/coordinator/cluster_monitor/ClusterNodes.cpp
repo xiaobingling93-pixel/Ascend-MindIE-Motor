@@ -290,10 +290,16 @@ ClusterNodes::RollType ClusterNodes::Roll(const std::vector<uint64_t> &newIds)
     return std::make_tuple(addVec, updateVec, removeVec);
 }
 
-const std::map<uint64_t, std::unique_ptr<InstanceInfo>> &ClusterNodes::GetInstanceInfos()
+std::map<uint64_t, InstanceInfo> ClusterNodes::GetInstanceInfos()
 {
     std::shared_lock<std::shared_mutex> lock(mtx);
-    return instanceInfos;
+    std::map<uint64_t, InstanceInfo> result;
+    for (const auto& pair : instanceInfos) {
+        if (pair.second) {
+            result[pair.first] = *pair.second;
+        }
+    }
+    return result;
 }
 
 bool ClusterNodes::IsAvailable()

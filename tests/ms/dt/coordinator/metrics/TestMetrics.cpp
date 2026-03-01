@@ -36,7 +36,7 @@ protected:
 };
 
 // 打桩
-nlohmann::json GetServerMetircsStub(const std::map<uint64_t, std::unique_ptr<InstanceInfo>> &podInfos)
+nlohmann::json GetServerMetircsStub(const std::map<uint64_t, InstanceInfo> &podInfos)
 {
     std::string metrics = R"(# HELP request_success_total Count of successfully processed requests.
 # TYPE request_success_total counter
@@ -924,10 +924,9 @@ TEST_F(TestMetrics, GetAndAggregateMetricsTC01)
     ReqManage tempInstance(scheduler, perfMonitor, instancesRecord);
     Metrics metricInstance;
     InstanceInfo instance("127.0.0.1", "8080", MINDIE::MS::DIGSInstanceRole::PREFILL_INSTANCE, "model1");
-    std::unique_ptr<InstanceInfo> infoPtr = std::make_unique<InstanceInfo>(instance);
-    std::map<uint64_t, std::unique_ptr<InstanceInfo>> podInfos;
+    std::map<uint64_t, InstanceInfo> podInfos;
     uint64_t id = 1;
-    podInfos[id] = std::move(infoPtr);
+    podInfos[id] = instance;
 
     Stub stub;
     stub.set(ADDR(Metrics, GetServerMetircs), &GetServerMetircsStub);
@@ -952,10 +951,9 @@ TEST_F(TestMetrics, GetAndAggregateMetricsTC02)
 {
     Metrics metricInstance;
     InstanceInfo instance("127.0.0.1", "8080", MINDIE::MS::DIGSInstanceRole::PREFILL_INSTANCE, "model1");
-    std::unique_ptr<InstanceInfo> infoPtr = std::make_unique<InstanceInfo>(instance);
-    std::map<uint64_t, std::unique_ptr<InstanceInfo>> podInfos;
+    std::map<uint64_t, InstanceInfo> podInfos;
     uint64_t id = 1;
-    podInfos[id] = std::move(infoPtr);
+    podInfos[id] = instance;
 
     std::string result = metricInstance.GetAndAggregateMetrics(podInfos);
     std::string expected = "";

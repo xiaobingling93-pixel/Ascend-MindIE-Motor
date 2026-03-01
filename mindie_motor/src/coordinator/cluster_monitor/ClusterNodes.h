@@ -74,7 +74,7 @@ public:
     MINDIE::MS::DIGSInstanceRole GetRole(uint64_t id);
     // 返回值：需要新增的实例，需要更新的实例，需要删除的实例
     RollType Roll(const std::vector<uint64_t> &newIds);
-    const std::map<uint64_t, std::unique_ptr<InstanceInfo>> &GetInstanceInfos();
+    std::map<uint64_t, InstanceInfo> GetInstanceInfos();
     bool IsAvailable();
     uint64_t GetId(const std::string &ip, const std::string &port);
     void AddTask(uint64_t id, const std::string &reqId);

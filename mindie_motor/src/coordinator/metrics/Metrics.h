@@ -40,13 +40,13 @@ public:
     ~Metrics() = default;
 
     void InitMetricsPattern();
-    std::string GetAndAggregateMetrics(const std::map<uint64_t, std::unique_ptr<InstanceInfo>> &podInfos);
+    std::string GetAndAggregateMetrics(const std::map<uint64_t, InstanceInfo> &podInfos);
 
 private:
     void ComputeSeqLenTableWidths(const std::vector<int>& bounds, int& colWidth, int& maxLabelWidth, int& totalWidth) const;
     void PrintTokenDistribution() const;
     // 根据Pod节点信息，获取Server的Metric文本
-    nlohmann::json GetServerMetircs(const std::map<uint64_t, std::unique_ptr<InstanceInfo>> &podInfos) const;
+    nlohmann::json GetServerMetircs(const std::map<uint64_t, InstanceInfo> &podInfos) const;
     // 解析单个pod的Metric字段，并存到对应的json中
     int32_t ParseMetrics(nlohmann::json &podMetric);
     // 聚合所有pod节点的Metric
