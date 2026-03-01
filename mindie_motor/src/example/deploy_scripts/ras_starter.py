@@ -25,12 +25,12 @@ from dataclasses import dataclass
 import urllib3
 from utils.file_utils import safe_open
 
-# 配置日志格式和级别
+# Configure logging format and level
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler()  # 同时输出到控制台
+        logging.StreamHandler()  # Output to console
     ]
 )
 
@@ -38,10 +38,8 @@ logging.basicConfig(
 @dataclass
 class CheckParams:
     with_cert: bool
-    enable_acc_check: bool
     model_name: str
     input_content: str
-    golden_result: str
     deployment_dir: str
     coordinator_port: str
     coordinator_manage_port: str
@@ -100,25 +98,11 @@ def fetch_ip_with_namespace_and_name(namespace: str, name: str) -> str:
     ip_idx = pod_info_lines[0].find("IP")
     namespace_idx = pod_info_lines[0].find("NAMESPACE")
     for line in pod_info_lines:
-        if line[namespace_idx:].split(" ")[0].strip() == namespace and name in line:
-            return line[ip_idx:].split(" ")[0].strip()
+        if not line or len(line) <= namespace_idx:
+            continue
+        if line[namespace_idx:].split()[0].strip() == namespace and name in line:
+            return line[ip_idx:].split()[0].strip()
     return ""
-
-
-def fetch_server_ip_and_port(params: CheckParams) -> str:
-    def fetch_port(file: str, port_name: str):
-        with safe_open(file, permission_mode=0o640) as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith(port_name):
-                    return line.split(port_name)[-1].strip()
-        return ""
-
-    haproxy_ip = fetch_ip_with_namespace_and_name(params.namespace, "haproxy")
-    if haproxy_ip:
-        return f"{haproxy_ip}:{fetch_port(os.path.join(params.deployment_dir, 'haproxy_init.yaml'), 'port:')}"
-    coordinator_ip = fetch_ip_with_namespace_and_name(params.namespace, f'{params.namespace}-coordinator')
-    return f"{coordinator_ip}:{params.coordinator_port}"
 
 
 def parse_boot_args(boot_args: list) -> dict:
@@ -151,6 +135,13 @@ def parse_boot_args(boot_args: list) -> dict:
                 default_boot_args[match_arg] = next_value
             except StopIteration:
                 raise ValueError(f"Invalid input args, please check boot arg {cur_arg}!") from None
+        elif cur_arg.startswith("--"):
+            # Unknown parameter, throw error
+            valid_args = ", ".join(default_boot_args.keys())
+            raise ValueError(
+                f"Unknown boot argument: {cur_arg}. "
+                f"Please check your arguments. Valid boot arguments are: {valid_args}"
+            )
 
     logging.info(f"boot args: {default_boot_args}")
     return default_boot_args
@@ -163,7 +154,7 @@ def fetch_config(config_path: str) -> dict:
 
 def check_service_status(http_pool_manager, params: CheckParams) -> bool:
     try:
-        ip_and_port = fetch_server_ip_and_port(params)
+        ip_and_port = fetch_ip_with_namespace_and_name(params.namespace, "coordinator") + ':' + params.coordinator_port
         logging.info(f"Fetch server ip and port successfully: {ip_and_port}")
         http_prefix = "https" if params.with_cert else "http"
         response = http_pool_manager.request(
@@ -174,27 +165,80 @@ def check_service_status(http_pool_manager, params: CheckParams) -> bool:
                 "model": params.model_name,
                 "prompt": params.input_content,
                 "temperature": 0,
-                "max_tokens": 10,
+                "max_tokens": 2,
                 "stream": False,
             }).encode())
         if response.status >= 400:
             logging.info(f"Response from Coordinator failed, status is {response.status}, "
                          f"content is {response.data.decode()}")
             return False
-        resp_text = response.data.decode(errors="ignore")
-        if params.enable_acc_check and params.golden_result not in resp_text:
-            logging.info(f"Accuracy error: golden_result '{params.golden_result}' not in response: {resp_text}")
-            return False
     except Exception as e:
         logging.info(f"Failed to connect to coordinator because {e}")
         return False
-    logging.info("MindIE MS Coordinator is ready!!!")
+    logging.info("MindIE MS service status is OK.")
     return True
 
 
-def get_request_token_sum_from_metrics(http_pool_manager, params: CheckParams) -> int:
+def infer_with_retry(http_pool_manager, params: CheckParams, max_retries: int = 5, interval_seconds: int = 180):
+    for i in range(max_retries):
+        logging.info(f"retry round {i+1}")
+        if check_service_status(http_pool_manager, params):
+            return True
+        time.sleep(interval_seconds)
+    return False
+
+
+def is_mindie_service_detected(namespace: str) -> bool:
+    pod_status_info_list = kubectl_get_pods_info().split('\n')
+    namespace_idx = pod_status_info_list[0].find("NAMESPACE")
+    for line in pod_status_info_list:
+        if not line or len(line) <= namespace_idx:
+            continue
+        if line[namespace_idx:].split()[0].strip() == namespace:
+            if (f"{namespace}-controller" in line or f"{namespace}-coordinator" in line or
+                    "mindie-server" in line):
+                return True
+    return False
+
+
+def is_metrics_mode_enabled() -> bool:
+    # Check if metrics is enabled
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    boot_sh_path = os.path.join(script_dir, "boot_helper", "boot.sh")
+    if os.path.isfile(boot_sh_path):
+        with open(boot_sh_path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                if (line.strip().startswith("export") and "MIES_SERVICE_MONITOR_MODE" in line and
+                        line.split("=")[1].strip() == "1"):
+                    logging.info("Metrics mode is enabled!!!")
+                    return True
+    logging.info("Metrics mode is disabled!!!")
+    return False
+
+
+def restart_service(namespace: str, boot_args):
+    # graceful exit
+    logging.info("Start to retain logs and restart service")
+    subprocess.run(["bash", "collect_pd_cluster_logs.sh"])
+    if not os.path.exists(os.path.join(os.getcwd(), "delete.sh")):
+        raise RuntimeError("delete.sh not found, couldn't exit gracefully!!!")
+    subprocess.run(["bash", "delete.sh", namespace])
+    while True:
+        if not is_mindie_service_detected(namespace):
+            logging.info("Delete mindie subprocess successfully!")
+            break
+        logging.info("Waiting for mindie subprocess to terminate!!!")
+        time.sleep(10)
+
+    # restart service
+    deploy_ac_job_res = subprocess.run(["python3", "deploy_ac_job.py"] + boot_args)
+    if is_mindie_service_detected(namespace):
+        logging.info(f"Restart service successfully!")
+
+
+def get_metrics_from_metrics_api(http_pool_manager, params: CheckParams) -> str:
     try:
-        coordinator_ip = fetch_ip_with_namespace_and_name(params.namespace, f"{params.namespace}-coordinator")
+        coordinator_ip = fetch_ip_with_namespace_and_name(params.namespace, "coordinator")
         logging.info(f"Fetch coordinator ip successfully: {coordinator_ip}")
         http_prefix = "https" if params.with_cert else "http"
         response = http_pool_manager.request(
@@ -202,62 +246,41 @@ def get_request_token_sum_from_metrics(http_pool_manager, params: CheckParams) -
             f"{http_prefix}://{coordinator_ip}:{params.coordinator_manage_port}/metrics"
         )
         if response.status >= 400:
-            logging.info(f"Response from Coordinator failed, status is {response.status}, "
-                         f"content is {response.data.decode()}")
-            return -1
+            logging.info(f"Response from Coordinator metrics failed, status is {response.status}, "
+                             f"content is {response.data.decode()}")
+            return ""
         resp_text = response.data.decode(errors="ignore")
-        for line in resp_text.split('\n'):
-            if "request_generation_tokens_sum" in line:
-                request_tokens_sum = int(line.split(" ")[-1])
-                logging.info(f"Successfully get metrics info from coordinator, request_generation_tokens_sum: "
-                             f"{request_tokens_sum}")
-                return request_tokens_sum
+        return resp_text
     except Exception as e:
         logging.info(f"Failed to connect to coordinator because {e}")
+    return ""
+
+
+def find_metric_values(resp_text: str, metric_name: str) -> int:
+    try:
+        for line in resp_text.split('\n'):
+            stripped = line.strip()
+            if metric_name in line and not (stripped.startswith('#')):
+                metric_value = int(float(line.split(" ")[-1]))
+                logging.info(f"Successfully get metrics info from coordinator, {metric_name}: {metric_value}")
+                return metric_value
+    except Exception as e:
+        logging.warning(f"Metric value for {metric_name} in response is not found: {e}")
     return -1
-
-
-def is_mindie_service_detected(params: CheckParams) -> bool:
-    pod_status_info_list = kubectl_get_pods_info().split('\n')
-    namespace_idx = pod_status_info_list[0].find("NAMESPACE")
-    for line in pod_status_info_list:
-        if line[namespace_idx:].split(" ")[0].strip() == params.namespace:
-            if (f"{params.namespace}-controller" in line or f"{params.namespace}-coordinator" in line or
-                    "mindie-server" in line):
-                return True
-    return False
-
-
-def graceful_exit(params: CheckParams):
-    logging.info("Start to retain logs and restart service")
-    subprocess.run(["bash", "collect_pd_cluster_logs.sh"])
-    if not os.path.exists(os.path.join(os.getcwd(), "delete.sh")):
-        raise RuntimeError("delete.sh not found, couldn't exit gracefully!!!")
-    subprocess.run(["bash", "delete.sh", params.namespace])
-    while True:
-        if not is_mindie_service_detected(params):
-            logging.info("Delete mindie subprocess successfully!")
-            return
-        logging.info("Waiting for mindie subprocess to terminate!!!")
-        time.sleep(10)
 
 
 def main():
     parser = argparse.ArgumentParser(description="MindIE RAS Starter")
-    parser.add_argument('--attach', action='store_true', help='是否是附加启动，如果是则不会删除原有服务')
-    parser.add_argument('--enable-acc-check', action='store_true', help='是否启动精度检测')
-    args, boot_args = parser.parse_known_args()
-
-    logging.info(f"启动参数: {vars(args)}, {boot_args}")
-
-    is_attach = args.attach
-    enable_acc_check = args.enable_acc_check
-    probe_interval = 10
-    input_content = "不要思考直接回答，相对论的发明者是谁？" # 精度探测问题
-    golden_result = "爱因斯坦" # 精度探测结果
-    max_unavailable_time = 1200 # 最大服务不可用时长，默认1200秒
-    http_timeout = 60 # urllib3请求超时时间，默认60秒
+    _, boot_args = parser.parse_known_args()
+    logging.info(f"Boot arguments: {boot_args}")
     boot_config = parse_boot_args(boot_args)
+
+    probe_interval = 300
+    do_inference_retries = 5
+    do_inference_interval = 180
+    input_content = "相对论的提出者是谁？"    # Probe prompt
+    max_unavailable_time = 1200             # Maximum service unavailable time
+    http_timeout = 60                       # urllib3 request timeout
     cert_context = load_cert()
     if cert_context:
         logging.info("Sending requests to Coordinator with ssl!")
@@ -286,50 +309,99 @@ def main():
 
     params = CheckParams(
         with_cert=(cert_context is not None),
-        enable_acc_check=enable_acc_check,
         model_name=model_name,
         input_content=input_content,
-        golden_result=golden_result,
         deployment_dir=boot_config["--deploy_yaml_path"],
         coordinator_port=coordinator_http_config["predict_port"],
         coordinator_manage_port=metric_port,
         namespace=user_config["deploy_config"]["job_id"]
     )
-    logging.info(f"Starting service with namespace: {params.namespace}, model_name: {model_name}, coordinator_port: "
-                 f"{params.coordinator_port}, coordinator_manage_port: {params.coordinator_manage_port}")
-    # Only start service in start up mode
-    if not is_attach and is_mindie_service_detected(params):
-        graceful_exit(params)
+
+    # Check if service is deployed
+    while True:
+        if is_mindie_service_detected(params.namespace):
+            break
+        logging.info(f"Waiting for service {params.namespace} to be deployed...")
+        time.sleep(10)
+    logging.info(f"Service {params.namespace} is deployed!!!")
+    
+    # Check if metrics is enabled
+    if not is_metrics_mode_enabled():
+        raise RuntimeError(f"Metrics mode is disabled, please check and set MIES_SERVICE_MONITOR_MODE=1.")
+
+    logging.info(f"Start monitoring service with namespace: {params.namespace}, model_name: {params.model_name}, "
+                 f"coordinator_port: {params.coordinator_port}, "
+                 f"coordinator_manage_port: {params.coordinator_manage_port}")
+
 
     max_retry_time = 10240
     while max_retry_time > 0:
-        max_retry_time -= 1
-        if not is_mindie_service_detected(params):
-            deploy_ac_job_res = subprocess.run(["python3", "deploy_ac_job.py"] + boot_args)
-            if deploy_ac_job_res.returncode:
-                logging.error(f"Start service failed! please check boot_args: {boot_args}")
-                exit(-1)
-            else:
-                logging.info(f"Start service successfully!")
-        last_generation_token_sum_num = 0
-        last_success_timepoint = time.time()
+        # Check if service is ready
         while True:
-            time.sleep(probe_interval)
-            cur_success_num = get_request_token_sum_from_metrics(http_pool_manager, params)
-            if cur_success_num > last_generation_token_sum_num:
-                last_generation_token_sum_num = cur_success_num
-                last_success_timepoint = time.time()
-                continue
-            if cur_success_num > 0:
-                last_generation_token_sum_num = cur_success_num
             if check_service_status(http_pool_manager, params):
-                last_success_timepoint = time.time()
-                continue
-            if time.time() - last_success_timepoint > max_unavailable_time:
-                logging.info(f"Service unavailable time is over {max_unavailable_time}!")
+                logging.info("MindIE MS Coordinator is ready!!!")
                 break
-        graceful_exit(params)
+            logging.info("MindIE MS Coordinator is not ready...")
+            time.sleep(10)
 
+        max_retry_time -= 1
+        while True:
+            time.sleep(10)
+            logging.info(f"Start to monitor service, getting metrics with interval {probe_interval}s...")
+            resp_text = get_metrics_from_metrics_api(http_pool_manager, params)
+            last_success_count = find_metric_values(resp_text, "request_success_total")
+            last_failed_count = find_metric_values(resp_text, "request_failed_total")
+            last_running_count = find_metric_values(resp_text, "num_requests_running")
+
+            time.sleep(probe_interval)
+            
+            logging.info(f"Start to examine service status...")
+            resp_text = get_metrics_from_metrics_api(http_pool_manager, params)
+            cur_success_count = find_metric_values(resp_text, "request_success_total")
+            cur_failed_count = find_metric_values(resp_text, "request_failed_total")
+            cur_running_count = find_metric_values(resp_text, "num_requests_running")
+            
+            delta_success = (cur_success_count - last_success_count
+                             if cur_success_count >= 0 and last_success_count >= 0 else -1)
+            delta_failed = (cur_failed_count - last_failed_count
+                            if cur_failed_count >= 0 and last_failed_count >= 0 else -1)
+
+            if delta_success < 0 or delta_failed < 0:
+                logging.info(f"Metrics values decreased, continue to monitor...")
+                continue
+
+            # Fault detection logic
+            if delta_success > 0:
+                logging.info(f"Success inference request count increased, continue to monitor...")
+                continue
+            elif delta_success == 0:
+                if delta_failed > 0:               
+                    logging.info(f"Doing virtual inference in failure increase state, "
+                                 f"start to retry {do_inference_retries} times "
+                                 f"with interval {do_inference_interval}s")
+                    if infer_with_retry(http_pool_manager, params, do_inference_retries, do_inference_interval):
+                        continue
+                    logging.info(f"Virtual inference failed in failure increase state, restart service!")    
+                    break
+                elif delta_failed == 0:
+                    if cur_running_count == 0:       # No request, idle state
+                        logging.info(f"Doing virtual inference in idle state, "
+                                     f"start to retry {do_inference_retries} times "
+                                     f"with interval {do_inference_interval}s")
+                        if infer_with_retry(http_pool_manager, params, do_inference_retries, do_inference_interval):
+                            continue
+                        logging.info(f"Virtual inference failed in idle state, restart service!")    
+                        break
+                    elif cur_running_count > 0:       # Running state, e.g. long sequence inference
+                        logging.info(f"Doing virtual inference in running state, "
+                                     f"start to retry {do_inference_retries} times "
+                                     f"with interval {do_inference_interval}s")
+                        if infer_with_retry(http_pool_manager, params, do_inference_retries, do_inference_interval):
+                            continue
+                        logging.info(f"Virtual inference failed in running state, restart service!")
+                        break
+                
+        restart_service(params.namespace, boot_args)
 
 if __name__ == '__main__':
     main()
