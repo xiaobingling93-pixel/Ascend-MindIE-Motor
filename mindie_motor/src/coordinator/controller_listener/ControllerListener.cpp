@@ -43,11 +43,11 @@ void ControllerListener::StopMasterCheck()
 
 void ControllerListener::Master2Worker()
 {
-    auto &instanceInfos = instancesRecord->GetInstanceInfos();
+    const auto& instanceInfos = instancesRecord->GetInstanceInfos();
     for (auto it = instanceInfos.begin(); it != instanceInfos.end(); ++it) {
-        if (it->second->role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
-            std::string ip = it->second->ip;
-            std::string port = it->second->port;
+        if (it->second.role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
+            std::string ip = it->second.ip;
+            std::string port = it->second.port;
             CloseConnection(ip, port);
         }
     }
@@ -430,12 +430,12 @@ int32_t ControllerListener::IdsTraverse(const std::vector<uint64_t> &ids, const 
         std::pair<size_t, size_t> pdNodeNum = {0, 0};
         const auto& instanceMap = instancesRecord->GetInstanceInfos();
         for (const auto &[id, instance] : instanceMap) {
-            if (instance->role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
+            if (instance.role == MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE) {
                 pdNodeNum.first++;
-            } else if (instance->role == MINDIE::MS::DIGSInstanceRole::PREFILL_INSTANCE) {
+            } else if (instance.role == MINDIE::MS::DIGSInstanceRole::PREFILL_INSTANCE) {
                 pdNodeNum.second++;
             }
-            LOG_D("[ControllerListener] instance %zu is %c.\n", id, instance->role);
+            LOG_D("[ControllerListener] instance %zu is %c.\n", id, instance.role);
         }
         LOG_I("[ControllerListener] instance update success, add %zu instance, update %zu instance, "
                 "remove %zu instance.(%zu P + %zu D)\n", addVec.size(), updateVec.size(), removeVec.size(),

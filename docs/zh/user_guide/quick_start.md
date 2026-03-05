@@ -12,7 +12,7 @@
 - Server可实现服务状态查询，模型信息查询，文本/流式推理等功能。
 
 >[!WARNING]警告
->HTTP缺乏必要的安全机制，容易受到数据泄露、数据篡改和中间人攻击的威胁，请谨慎使用。
+>HTTP缺乏必要的安全机制，容易受到数据泄露、数据篡改和中间人攻击的威胁，建议用户谨慎使用HTTP协议。
 
 1.  两种启动服务方法如下所示。
 
@@ -54,7 +54,7 @@
 
 2. 用户可使用HTTPS客户端（Linux curl命令，Postman工具等）发送HTTPS请求，此处以Linux curl命令为例进行说明。
 
-    重开一个窗口，使用以下命令发送请求。例如列出当前模型列表：
+    重新打开一个窗口，使用以下命令发送请求。例如列出当前模型列表：
 
     ```
     curl -H "Accept: application/json" -H "Content-type: application/json" --cacert ca.pem --cert client.pem  --key client.key.pem -X GET https://127.0.0.1:1025/v1/models

@@ -6,16 +6,37 @@
 
 ## 🚀简介
 
-MindIE Motor是面向通用模型场景的推理服务化框架，通过开放、可扩展的推理服务化平台架构提供推理服务化能力，支持对接业界主流推理框架接口，满足大语言模型的高性能推理需求。
+MindIE Motor是面向LLM PD分离推理的请求调度框架，通过开放、可扩展的推理服务化平台架构提供推理服务化能力，向下对接MindIE LLM，满足大语言模型高性能推理需求。MindIE Motor提供以下两个方面的能力：
 
-MindIE Motor的组件包括MindIE Service Tools、集群管理组件（Controller和Coordinator），通过对接昇腾推理加速引擎带来大模型在昇腾环境中的性能提升，并逐渐以高性能和易用性牵引用户向MindIE原生推理服务化框架迁移。其架构图如[图1 MindIE-Motor架构图](#fig186975591945)所示。
+-   PD分离的请求调度：主要将外部的客户请求分发到负载最低的Prefill/Decode实例上，起到负载均衡的作用；
+-   RAS（Reliability、Availability和Serviceability）：增强PD分离服务可靠性、可用性和可服务性的能力。
+
+MindIE Motor及其周边组件交互架构图如下所示。
 
 **图 1** MindIE Motor架构图<a id="fig186975591945"></a>  
 ![](./docs/zh/figures/mindie_motor_architectural_diagram.png)
 
-**MindIE Motor 是面向通用模型场景的推理服务化框架，通过开放、可扩展的推理服务化平台架构提供推理服务化能力，支持对接业界主流推理框架接口，满足大语言模型的高性能推理需求**。
+MindIE Motor提供PD分离推理服务化调度和RAS能力，关键组件和模块解释如下。
+-  Coordinator：调度器。是用户推理请求的入口，接收高并发的推理请求，进行请求调度、请求管理、请求转发等，是整个集群的数据请求入口。
+    -   Endpoint：对外RESTful接口，如OpenAI接口。
+    -   Metrics：PD分离服务整体的Metrics统计指标，是整个服务的Prefill/Decode实例的统计指标汇总。
+    -   Controller Monitor：接收Controller同步的实例状态信息，如健康状态、故障实例等信息。
+    -   LoadBalancer：负载均衡调度。
+    -   RequestMonitor：请求状态监控，如请求阶段、请求异常等。
 
-以下是两个 MindIE-Motor 代码仓库**智能体**，只需点击 "**Ask AI**" 徽章，即可进入其专属页面，有效缓解源码阅读的困难，开启智能代码学习与问答体验！它们将帮助您更深入地理解 MindIE-Motor 的运行原理，并协助解决使用过程中遇到的问题与错误。
+-   Controller：控制器。完成集群内所有Prefill/Decode实例的业务状态管控、PD身份管理与决策、RAS能力等，是整个集群的状态管控器和决策大脑。
+    -   FaultManager：故障管理模块，接收上报的故障，并处理故障，如隔离、重启、自愈恢复等。
+     -   InsManager：实例管理器，负责PD实例身份的分配、调整等。
+     -   CCAEReporter：运维管理信息上报，上报PD实例、Metrics等统计信息。
+     -   InsMonitor：PD实例监控，包括心跳、负载等。
+
+-   MindIE LLM：提供单个模型服务实例（Prefiller/Decoder）服务化推理能力，提供ContinuousBatching、PagedAttention、投机推理等LLM加速特性。
+-   ClusterD：MindCluster高阶组件，负责故障诊断和全局RankTable表（整个PD分离服务所需的组网和Device信息）下发等功能。
+-   CCAE：算存网一体化运维可视化平台。
+
+**MindIE Motor是面向通用模型场景的推理服务化框架，通过开放、可扩展的推理服务化平台架构提供推理服务化能力，支持对接业界主流推理框架接口，满足大语言模型的高性能推理需求**。
+
+以下是两个MindIE Motor代码仓库**智能体**，只需点击 "**Ask AI**" 徽章，即可进入其专属页面，有效缓解源码阅读的困难，开启智能代码学习与问答体验！它们将帮助您更深入地理解MindIE Motor的运行原理，并协助解决使用过程中遇到的问题与错误。
 
 <div align="center">
 
@@ -24,25 +45,36 @@ MindIE Motor的组件包括MindIE Service Tools、集群管理组件（Controlle
 
 </div>
 
-MindIE Motor 的组件包括：
-
--   MindIE LLM：提供大模型推理能力，同时提供多并发请求的调度功能。
-
 
 
 ## 🔍目录结构
-
-*待开发补充*
+```
+├── docs                                     # 项目文档                         
+├── mindie_motor                             # 服务框架总模块
+│   ├── python                               # Python封装与脚本
+│   ├── src                                  # 服务管理模块
+│   │   ├── common                           # 公共代码
+│   │   ├── config                           # 配置文件
+│   │   ├── controller                       # 控制器
+│   │   ├── coordinator                      # 调度器
+│   │   ├── example                          # 部署与样例
+│   │   ├── http_client_ctl                  # HTTP客户端与管控
+│   │   ├── node_health_management           # 节点状态探针
+│   │   ├── test                             # 单元测试
+├── module                                   # MindIE-LLM推理引擎模块
+├── third_party                              # 第三方依赖
+├── README.md   
+```
 
 ## ⚡️版本说明
 
 |MindIE软件版本|CANN版本兼容性|
 |:---|:---|
-|2.2.RC1|8.3.RC2|
+|3.0.0|9.0.0|
 
 ## ⚡️环境部署
 
-MindIE Motor安装前的相关软硬件环境准备，以及安装步骤，请参见[安装指南](./docs/zh/User_Guide/installation_guide.md)。
+MindIE Motor安装前的相关软硬件环境准备，以及安装步骤，请参见[安装指南](./docs/zh/user_guide/install/installation_description.md)。
 
 
 ## ⚡️快速入门

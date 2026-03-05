@@ -412,7 +412,7 @@ uint64_t Metrics::ProcessSingleMetric(nlohmann::json &podMetric, nlohmann::json 
     return failReqIndex;
 }
 
-nlohmann::json Metrics::GetServerMetircs(const std::map<uint64_t, std::unique_ptr<InstanceInfo>> &podInfos) const
+nlohmann::json Metrics::GetServerMetircs(const std::map<uint64_t, InstanceInfo> &podInfos) const
 {
     nlohmann::json collects;
     int32_t code = 400; // 400 bad request
@@ -422,12 +422,12 @@ nlohmann::json Metrics::GetServerMetircs(const std::map<uint64_t, std::unique_pt
     for (const auto &pair: podInfos) {
         nlohmann::json podCollect;
         auto id = pair.first;
-        auto ip = pair.second->ip;
-        auto metricPort = pair.second->metricPort;
+        auto ip = pair.second.ip;
+        auto metricPort = pair.second.metricPort;
         podCollect["ip"] = ip;
         podCollect["port"] = metricPort;
-        podCollect["identity"] = std::to_string(static_cast<char>(pair.second->role));
-        podCollect["NPU_mem_size"] = pair.second->totalBlockNum;
+        podCollect["identity"] = std::to_string(static_cast<char>(pair.second.role));
+        podCollect["NPU_mem_size"] = pair.second.totalBlockNum;
 
         LOG_M("[Get] Get mindie-server metric: ID %lu, IP %s, port %s.",
             id, ip.c_str(), metricPort.c_str());
@@ -553,7 +553,7 @@ void Metrics::PrintTokenDistribution() const
     LOG_M("[Metrics][Seq_Len_Table] %s", startLine.c_str());
 }
 
-std::string Metrics::GetAndAggregateMetrics(const std::map<uint64_t, std::unique_ptr<InstanceInfo>> &podInfos)
+std::string Metrics::GetAndAggregateMetrics(const std::map<uint64_t, InstanceInfo> &podInfos)
 {
     LOG_D("[Metrics]GetAndAggregateMetrics");
     auto collects = GetServerMetircs(podInfos);
