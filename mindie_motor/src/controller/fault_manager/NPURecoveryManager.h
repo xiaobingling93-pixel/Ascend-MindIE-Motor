@@ -134,7 +134,10 @@ private:
         "[0x08520003,na,L2,na]"
     };
     std::set<std::string> mFaultRecoveringCodeWhitelist = {
-        "80CB8009"
+        "80CB8009", // 灵衢伴生故障码
+        "80CB800A", // hbm伴生故障码
+        "80E01801", // hbm伴生故障码
+        "80E18404"  // hbm伴生故障码
     };
 
     using ErrCodeHandler = std::function<void(uint64_t)>;
@@ -148,6 +151,8 @@ private:
     // 故障码为全量上报, 按vector顺序决定优先级(靠前优先), 只执行第一个匹配的快恢流程函数
     std::vector<ErrCodeProcessor> mErrCodeProcessors = {
         {"MIE05E01000A", "oom", LLMEngineFaultReason::TEXT_GENERATOR_OUT_OF_MEMORY,
+            std::bind(&NPURecoveryManager::OOMRecoveryHandler, this, std::placeholders::_1)},
+        {"MIE05E01000B", "hbm", LLMEngineFaultReason::HBM_MULTI_BIT_ERROR,
             std::bind(&NPURecoveryManager::OOMRecoveryHandler, this, std::placeholders::_1)},
     };
 

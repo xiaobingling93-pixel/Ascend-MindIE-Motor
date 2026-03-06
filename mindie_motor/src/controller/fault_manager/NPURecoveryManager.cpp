@@ -556,18 +556,24 @@ void NPURecoveryManager::ProcessInstanceFaults(const std::unordered_map<uint64_t
     LOG_D("[NPURecoveryManager] Processing %zu instances with faults", instanceFaultMap.size());
     
     for (const auto& [instanceId, faultNodes] : instanceFaultMap) {
-        // 检查该实例是否已经在恢复中，避免重复处理
-        if (mInstanceRecoveryInfo.Count(instanceId) > 0) {
-            LOG_D("[NPURecoveryManager] Instance %lu is already in recovery, skipping", instanceId);
-            continue;
-        }
-
         // 获取节点信息
         std::vector<uint64_t> instanceNodeIds = GetAllNodesInInstance(instanceId);
         std::unordered_set<std::string> instancePodIPs = GetAllPodIPsInInstance(instanceId);
         if (instanceNodeIds.empty() || instancePodIPs.empty()) {
             LOG_D("[NPURecoveryManager] No nodes found for instance %lu", instanceId);
             continue;
+        }
+
+        // 检查该实例是否已经在恢复中，避免重复处理
+        if (mInstanceRecoveryInfo.Count(instanceId) > 0) {
+            LOG_W("[NPURecoveryManager] Instance %lu is already in recovery, stop engine and abort recovery",
+                  instanceId);
+            (void)SendNodeManagerCommandToPodsParallel(instancePodIPs, instanceId, NodeManagerCmd::STOP_ENGINE);
+            // 清理恢复信息，避免资源泄漏
+            mInstanceRecoveryInfo.Erase(instanceId);
+            mErrCodeAlarmExisted.Erase(instanceId);
+            LOG_I("[NPURecoveryManager] Removed instance %lu from recovery queue (PAUSE_ENGINE failed)", instanceId);
+            return;
         }
 
         // 判断实例中故障节点的角色，决定使用哪种恢复策略

@@ -756,23 +756,22 @@ void ControllerConfig::InitCtrlBackupConfig(const nlohmann::json &rawConfig)
 
 void ControllerConfig::InitFaultRecoveryFunction(const nlohmann::json &rawConfig)
 {
-    auto initRecoveryEnableByKey = [&rawConfig, this](const std::string &key) {
-        if (!rawConfig.contains("fault_recovery_func_dict") ||
-            !rawConfig["fault_recovery_func_dict"].contains(key)) {
-            LOG_I("[InitFaultRecoveryFunction] %s recovery function is not configured.", key.c_str());
-            mFaultRecoverySw[key] = false;
-            return;
-        }
-        if (!IsJsonBoolValid(rawConfig["fault_recovery_func_dict"], key)) {
+    mFaultRecoverySw.clear();
+    if (!rawConfig.contains("fault_recovery_func_dict") || !rawConfig["fault_recovery_func_dict"].is_object()) {
+        LOG_I("[InitFaultRecoveryFunction] fault_recovery_func_dict is not configured or not an object.");
+        return;
+    }
+    const auto& dict = rawConfig["fault_recovery_func_dict"];
+    for (auto it = dict.begin(); it != dict.end(); ++it) {
+        const std::string &key = it.key();
+        if (!IsJsonBoolValid(dict, key)) {
             LOG_I("[InitFaultRecoveryFunction] %s recovery function is disabled because "
                 "configuration value is not a bool type.", key.c_str());
             mFaultRecoverySw[key] = false;
-            return;
+        } else {
+            mFaultRecoverySw[key] = dict.at(key).get<bool>();
         }
-        mFaultRecoverySw[key] = rawConfig["fault_recovery_func_dict"].at(key).get<bool>();
-    };
-    initRecoveryEnableByKey("lingqu_link");
-    initRecoveryEnableByKey("oom");
+    }
 }
 
 std::string ControllerConfig::GetPodIP() const
