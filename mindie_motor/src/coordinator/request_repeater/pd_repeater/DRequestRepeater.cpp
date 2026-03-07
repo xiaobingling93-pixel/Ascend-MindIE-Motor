@@ -126,6 +126,38 @@ static std::string ParseKeyWord(boost::beast::string_view body, size_t pos)
     return body.substr(i, pos - i);
 }
 
+// Parse body for usage (prompt_tokens, completion_tokens) and update token_distribution.
+// Used for both lastData and data (streaming may send final chunk with usage as "data").
+static void TryUpdateTokenDistributionFromUsage(boost::beast::string_view body)
+{
+    try {
+        nlohmann::json jsonData = nlohmann::json::parse(body);
+        if (!jsonData.contains("usage") || !jsonData["usage"].contains("prompt_tokens") ||
+            !jsonData["usage"].contains("completion_tokens")) {
+            return;
+        }
+        int input_tokens = jsonData["usage"]["prompt_tokens"].get<int>();
+        int output_tokens = jsonData["usage"]["completion_tokens"].get<int>();
+        int input_range = MAX_TOKEN_RANGE;
+        for (int range : token_ranges) {
+            if (input_tokens <= range) {
+                input_range = range;
+                break;
+            }
+        }
+        int output_range = MAX_TOKEN_RANGE;
+        for (int range : token_ranges) {
+            if (output_tokens <= range) {
+                output_range = range;
+                break;
+            }
+        }
+        token_distribution[input_range][output_range]++;
+    } catch (const nlohmann::json::exception &) {
+        // Not valid JSON or missing fields, ignore
+    }
+}
+
 // 收到来自D的正常应答
 void RequestRepeater::DResChunkHandler(std::shared_ptr<ClientConnection> connection)
 {
@@ -160,36 +192,11 @@ void RequestRepeater::DResChunkHandler(std::shared_ptr<ClientConnection> connect
         oneMessage = oneMessage.substr(pos1 + 1); // 取出 : 后面的消息体
         if (keyWord == "reqId") { // 解析reqId
             reqId = oneMessage;
-        } else if (keyWord == "data") { // 普通token
+        } else if (keyWord == "data") { // 普通token（流式时最后一条可能带 usage，需参与二维表统计）
+            TryUpdateTokenDistributionFromUsage(oneMessage);
             DResultNormalToken(reqId, oneMessage);
         } else if (keyWord == "lastData") { // 最后一个token
-            try {
-                nlohmann::json jsonData = nlohmann::json::parse(oneMessage);
-                if (jsonData.contains("usage") && jsonData["usage"].contains("prompt_tokens") &&
-                    jsonData["usage"].contains("completion_tokens")) {
-                    int input_tokens = jsonData["usage"]["prompt_tokens"].get<int>();
-                    int output_tokens = jsonData["usage"]["completion_tokens"].get<int>();
-                    int input_range = MAX_TOKEN_RANGE;
-                    for (int range : token_ranges) {
-                        if (input_tokens <= range) {
-                            input_range = range;
-                            break;
-                        }
-                    }
-                    int output_range = MAX_TOKEN_RANGE;
-                    for (int range : token_ranges) {
-                        if (output_tokens <= range) {
-                            output_range = range;
-                            break;
-                        }
-                    }
-                    token_distribution[input_range][output_range]++;
-                }
-            } catch (const nlohmann::json::exception &e) {
-                LOG_W("[%s] [RequestRepeater] Parse lastData usage json failed, reqId: %s, exception: %s",
-                    GetWarnCode(ErrorType::WARNING, CoordinatorFeature::D_REQUESTREPEATER).c_str(),
-                    reqId.c_str(), e.what());
-            }
+            TryUpdateTokenDistributionFromUsage(oneMessage);
             DResultLast(reqId, oneMessage);
         } else if (keyWord == "error") { // 错误消息
             DResultError(reqId, oneMessage);
