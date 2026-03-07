@@ -136,23 +136,23 @@ static void TryUpdateTokenDistributionFromUsage(boost::beast::string_view body)
             !jsonData["usage"].contains("completion_tokens")) {
             return;
         }
-        int input_tokens = jsonData["usage"]["prompt_tokens"].get<int>();
-        int output_tokens = jsonData["usage"]["completion_tokens"].get<int>();
-        int input_range = MAX_TOKEN_RANGE;
+        int inputTokens = jsonData["usage"]["prompt_tokens"].get<int>();
+        int outputTokens = jsonData["usage"]["completion_tokens"].get<int>();
+        int inputRange = MAX_TOKEN_RANGE;
         for (int range : token_ranges) {
-            if (input_tokens <= range) {
-                input_range = range;
+            if (inputTokens <= range) {
+                inputRange = range;
                 break;
             }
         }
-        int output_range = MAX_TOKEN_RANGE;
+        int outputRange = MAX_TOKEN_RANGE;
         for (int range : token_ranges) {
-            if (output_tokens <= range) {
-                output_range = range;
+            if (outputTokens <= range) {
+                outputRange = range;
                 break;
             }
         }
-        token_distribution[input_range][output_range]++;
+        token_distribution[inputRange][outputRange]++;
     } catch (const nlohmann::json::exception &) {
         // Not valid JSON or missing fields, ignore
     }
