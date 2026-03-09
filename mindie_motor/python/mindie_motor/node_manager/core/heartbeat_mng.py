@@ -112,10 +112,10 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
         # 在当前不执行指令时候才解析, 不会出现server engine状态不一致的问题
         engine_state_cur = self.engine_state[-1] # 首字段engine_state_cur[0]是时间戳
         if ServiceStatus.SERVICE_READY.value in engine_state_cur[1:]:
-            self.logger.error(f"[parse_engine_state] Contain SERVICE_READY in engine state while no CMD executing")
+            self.logger.error("[parse_engine_state] Contain SERVICE_READY in engine state while no CMD executing")
             return NodeRunningStatus.ABNORMAL.value
         if ServiceStatus.SERVICE_PAUSE.value in engine_state_cur[1:]:
-            self.logger.error(f"[parse_engine_state] Contain SERVICE_PAUSE in engine state while no CMD executing")
+            self.logger.error("[parse_engine_state] Contain SERVICE_PAUSE in engine state while no CMD executing")
             return NodeRunningStatus.ABNORMAL.value
         if ServiceStatus.SERVICE_ABNORMAL.value in engine_state_cur[1:]:
             return NodeRunningStatus.ABNORMAL.value
@@ -137,15 +137,15 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
 
     def _monitor_state(self):
         while self.running:
-            self.logger.info(f"Monitering EP status")
+            self.logger.info("Monitoring EP status")
             result_all = self._query_ep_status()
             if not self.heartbeat_mng.heartbeat_check_allowed:
                 # CMD在运行或者heartbeatmng在处理异常,不做状态更新和处理
-                self.logger.info(f"while handling cmd, not update heartbeat")
+                self.logger.info("while handling cmd, not update heartbeat")
                 time.sleep(self.query_interval)
                 continue
             if self.heartbeat_mng.get_running_status() == NodeRunningStatus.PAUSE.value:  # 在处理异常
-                self.logger.error(f"heartBeatMng is Paused while no cmd is executing")
+                self.logger.error("heartBeatMng is Paused while no cmd is executing")
                 time.sleep(self.query_interval)
                 continue
             now = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
@@ -283,10 +283,10 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
         resp = self.client.send_alarm_info_to_ctrler(error_info)
 
         if resp.get(DATA_STR, {}).get("status", "") == str(ControllerReply.SEND_CONTROLLER_ALARM_SUCCESS.value):
-            self.logger.info(f"Has successfully send alarm to controller.")
+            self.logger.info("Has successfully send alarm to controller.")
         elif resp.get(DATA_STR, {}).get("status", "") == \
             str(ControllerReply.SEND_CONTROLLER_ALARM_UNREACHEABLE.value):
-            self.logger.info(f"Failed to send alarm to controller, service unreachable")
+            self.logger.info("Failed to send alarm to controller, service unreachable")
         else:
             self.logger.error(f"Controller reply not found, ctrl_rpl={resp}")
 
@@ -311,14 +311,14 @@ class HeartBeatMng(metaclass=_SingletonMeta):
 
     def run(self):
         if not GeneralConfig().has_endpoint:
-            self.logger.info(f"Heartbeat Manager: No endpoint configured, skipping monitoring.")
+            self.logger.info("Heartbeat Manager: No endpoint configured, skipping monitoring.")
             return
-        self.logger.info(f"Heartbeat Manager:Start monitoring engine state.")
+        self.logger.info("Heartbeat Manager:Start monitoring engine state.")
         self._status_monitor.start_monitoring()
 
     def stop(self):
         self._status_monitor.stop_monitoring()
-        self.logger.info(f"Heartbeat Manager: Monitoring engine state stopped.")
+        self.logger.info("Heartbeat Manager: Monitoring engine state stopped.")
 
     def get_heartbeat_check_allowed(self) -> bool:
         return self.heartbeat_check_allowed

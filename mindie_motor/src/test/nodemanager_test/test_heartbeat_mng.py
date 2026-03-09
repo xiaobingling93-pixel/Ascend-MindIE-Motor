@@ -21,10 +21,7 @@ import threading
 import unittest
 from time import sleep
 import logging
-import time
 from unittest.mock import patch, MagicMock
-import threading
-import threading
 from collections import deque
 
 from node_manager.models.enums import NodeRunningStatus, ServiceStatus

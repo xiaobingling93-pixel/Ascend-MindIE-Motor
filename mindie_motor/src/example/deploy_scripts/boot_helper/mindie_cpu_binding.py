@@ -13,9 +13,7 @@ import subprocess
 import logging
 import argparse
 from dataclasses import dataclass
-from itertools import accumulate
-from typing import List, Dict, Tuple, Union
-import psutil
+from typing import List, Dict, Union
 
 
 class ENV:

@@ -29,11 +29,11 @@ logger.addHandler(console_handler)
 def __check_file_path(file_path, mode, check_permission):
     check_path_flag, err_msg, real_path = FileUtils.regular_file_path(file_path)
     if not check_path_flag:
-        logger.error(f"check file path failed: %s", err_msg)
+        logger.error("check file path failed: %s", err_msg)
         return False
     check_file_flag, err_msg = FileUtils.is_file_valid(real_path, mode=mode, check_permission=check_permission)
     if not check_file_flag:
-        logger.error(f"check file path is invalid: %s", err_msg)
+        logger.error("check file path is invalid: %s", err_msg)
         return False
     return True
 

@@ -65,7 +65,7 @@ def merge_results(product, result_dir):
     for case in cases:
         merge_root.extend(case)
     new_tree = ET.ElementTree(merge_root)
-    new_tree.write(f"test_detail.xml", encoding='utf-8', xml_declaration=True, short_empty_elements=True)
+    new_tree.write("test_detail.xml", encoding='utf-8', xml_declaration=True, short_empty_elements=True)
  
 if __name__ == '__main__':
     main()

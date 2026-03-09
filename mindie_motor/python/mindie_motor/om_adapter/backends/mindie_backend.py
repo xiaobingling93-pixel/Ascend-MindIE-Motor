@@ -29,13 +29,13 @@ class MindIEBackend(BaseBackend):
             self.alarm_shm = CircularShareMemory("mindie_controller_alarms_sem", "mindie_controller_alarms",
                                                  10 * 1024 * 1024)
             self.logger.info("Alarm share memory created successfully!")
-            self.alive_shm = ByteShareMemory(f"smu_ctrl_heartbeat_sem", f"smu_ctrl_heartbeat_shm")
+            self.alive_shm = ByteShareMemory("smu_ctrl_heartbeat_sem", "smu_ctrl_heartbeat_shm")
             self.logger.info("Alive share memory created successfully!")
         else:
             self.alarm_shm = CircularShareMemory("mindie_coordinator_alarms_sem", "mindie_coordinator_alarms",
                                                  10 * 1024 * 1024)
             self.logger.info("Alarm share memory created successfully!")
-            self.alive_shm = ByteShareMemory(f"smu_coord_heartbeat_sem", f"smu_coord_heartbeat_shm")
+            self.alive_shm = ByteShareMemory("smu_coord_heartbeat_sem", "smu_coord_heartbeat_shm")
             self.logger.info("Alive share memory created successfully!")
 
     def fetch_alarm_info(self) -> list:
@@ -66,7 +66,7 @@ class MindIEBackend(BaseBackend):
             alive_timestamp = json.loads(chunk)["timestamp"]
             if time.time() <= alive_timestamp + 5:
                 return True
-        except JSONDecodeError as json_error:
+        except JSONDecodeError:
             self.logger.error(f"Failed to read timestamp json: {chunk}")
         except Exception as e:
             self.logger.error(e)

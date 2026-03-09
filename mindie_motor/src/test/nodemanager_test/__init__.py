@@ -10,10 +10,9 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-import os
 import sys
 import types
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class FakeGeneralConfig:

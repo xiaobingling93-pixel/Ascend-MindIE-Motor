@@ -231,9 +231,9 @@ def restart_service(namespace: str, boot_args):
         time.sleep(10)
 
     # restart service
-    deploy_ac_job_res = subprocess.run(["python3", "deploy_ac_job.py"] + boot_args)
+    subprocess.run(["python3", "deploy_ac_job.py"] + boot_args)
     if is_mindie_service_detected(namespace):
-        logging.info(f"Restart service successfully!")
+        logging.info("Restart service successfully!")
 
 
 def get_metrics_from_metrics_api(http_pool_manager, params: CheckParams) -> str:
@@ -279,7 +279,6 @@ def main():
     do_inference_retries = 5
     do_inference_interval = 180
     input_content = "相对论的提出者是谁？"    # Probe prompt
-    max_unavailable_time = 1200             # Maximum service unavailable time
     http_timeout = 60                       # urllib3 request timeout
     cert_context = load_cert()
     if cert_context:
@@ -304,7 +303,7 @@ def main():
     try:
         ms_coordinator_config = fetch_config(os.path.join(boot_config["--conf_path"], "ms_coordinator.json"))
         metric_port = ms_coordinator_config["http_config"]["external_port"]
-    except Exception as e:
+    except Exception:
         metric_port = coordinator_http_config["manage_port"]
 
     params = CheckParams(
@@ -327,7 +326,7 @@ def main():
     
     # Check if metrics is enabled
     if not is_metrics_mode_enabled():
-        raise RuntimeError(f"Metrics mode is disabled, please check and set MIES_SERVICE_MONITOR_MODE=1.")
+        raise RuntimeError("Metrics mode is disabled, please check and set MIES_SERVICE_MONITOR_MODE=1.")
 
     logging.info(f"Start monitoring service with namespace: {params.namespace}, model_name: {params.model_name}, "
                  f"coordinator_port: {params.coordinator_port}, "
@@ -351,11 +350,10 @@ def main():
             resp_text = get_metrics_from_metrics_api(http_pool_manager, params)
             last_success_count = find_metric_values(resp_text, "request_success_total")
             last_failed_count = find_metric_values(resp_text, "request_failed_total")
-            last_running_count = find_metric_values(resp_text, "num_requests_running")
 
             time.sleep(probe_interval)
             
-            logging.info(f"Start to examine service status...")
+            logging.info("Start to examine service status...")
             resp_text = get_metrics_from_metrics_api(http_pool_manager, params)
             cur_success_count = find_metric_values(resp_text, "request_success_total")
             cur_failed_count = find_metric_values(resp_text, "request_failed_total")
@@ -367,12 +365,12 @@ def main():
                             if cur_failed_count >= 0 and last_failed_count >= 0 else -1)
 
             if delta_success < 0 or delta_failed < 0:
-                logging.info(f"Metrics values decreased, continue to monitor...")
+                logging.info("Metrics values decreased, continue to monitor...")
                 continue
 
             # Fault detection logic
             if delta_success > 0:
-                logging.info(f"Success inference request count increased, continue to monitor...")
+                logging.info("Success inference request count increased, continue to monitor...")
                 continue
             elif delta_success == 0:
                 if delta_failed > 0:               
@@ -381,7 +379,7 @@ def main():
                                  f"with interval {do_inference_interval}s")
                     if infer_with_retry(http_pool_manager, params, do_inference_retries, do_inference_interval):
                         continue
-                    logging.info(f"Virtual inference failed in failure increase state, restart service!")    
+                    logging.info("Virtual inference failed in failure increase state, restart service!")    
                     break
                 elif delta_failed == 0:
                     if cur_running_count == 0:       # No request, idle state
@@ -390,7 +388,7 @@ def main():
                                      f"with interval {do_inference_interval}s")
                         if infer_with_retry(http_pool_manager, params, do_inference_retries, do_inference_interval):
                             continue
-                        logging.info(f"Virtual inference failed in idle state, restart service!")    
+                        logging.info("Virtual inference failed in idle state, restart service!")    
                         break
                     elif cur_running_count > 0:       # Running state, e.g. long sequence inference
                         logging.info(f"Doing virtual inference in running state, "
@@ -398,7 +396,7 @@ def main():
                                      f"with interval {do_inference_interval}s")
                         if infer_with_retry(http_pool_manager, params, do_inference_retries, do_inference_interval):
                             continue
-                        logging.info(f"Virtual inference failed in running state, restart service!")
+                        logging.info("Virtual inference failed in running state, restart service!")
                         break
                 
         restart_service(params.namespace, boot_args)

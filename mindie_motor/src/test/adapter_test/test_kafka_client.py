@@ -13,7 +13,6 @@
 import unittest
 
 from om_adapter.monitors.kafka_client.kafka_produce import KafkaProducer
-from om_adapter.config import ConfigUtil
 
 
 class TestKafkaProduce(unittest.TestCase):

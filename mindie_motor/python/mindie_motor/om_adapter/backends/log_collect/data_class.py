@@ -10,7 +10,6 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-import json
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone

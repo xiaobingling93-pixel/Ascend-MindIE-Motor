@@ -140,7 +140,7 @@ class CommandHelper(object):
     def clear_output_buffer(self, terminal_id: int) -> None:
         '''clear old output in output.txt
         '''
-        with open(self.output[terminal_id], 'w') as f:
+        with open(self.output[terminal_id], 'w'):
             pass
 
     def _add_output_command(self, command: str, terminal_id: int) -> str:

@@ -11,7 +11,6 @@
 # See the Mulan PSL v2 for more details.
 
 import os
-import re
 import stat
 from pathlib import Path
 

@@ -15,6 +15,7 @@ import subprocess
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+import importlib.util
 
 from node_manager.common.utils import _SingletonMeta
 from node_manager.common.logging import Log
@@ -45,11 +46,7 @@ class RuntimeParamChecker(metaclass=_SingletonMeta):
 
     @staticmethod
     def has_msprechecker():
-        try:
-            import msprechecker
-            return True
-        except ImportError:
-            return False
+        return importlib.util.find_spec('msprechecker') is not None
     
     @staticmethod
     def get_check_rule_path():

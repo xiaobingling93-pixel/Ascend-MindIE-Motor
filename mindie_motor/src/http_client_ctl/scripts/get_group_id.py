@@ -44,7 +44,7 @@ def wait_global_ranktable_completed(argv):
 
         try:
             ipaddress.ip_address(pod_ip)
-        except ValueError:
+        except ValueError as e:
             raise RuntimeError(f"Invalid POD_IP: {pod_ip}") from e
         for group in server_group_list:
             group_id = "-1"

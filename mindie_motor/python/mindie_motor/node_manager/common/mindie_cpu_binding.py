@@ -1,12 +1,9 @@
 # Copyright Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-import argparse
 import os
-from itertools import accumulate
 from dataclasses import dataclass
 import logging
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Union
 import subprocess
-import psutil
 
 
 class ENV:
