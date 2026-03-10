@@ -10,7 +10,5 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-__all__ = ['ByteShareMemory', 'CircularShareMemory']
-
 from .byte_memory import ByteShareMemory
 from .circular_memory import CircularShareMemory

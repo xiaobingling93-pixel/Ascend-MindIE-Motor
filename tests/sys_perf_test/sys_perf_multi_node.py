@@ -18,6 +18,7 @@ import random
 
 from command_helper import CommandHelper, kill_all_service
 from utils import (
+    PerfIndex,
     print_to_screen,
     load_config,
     extract_result_from_perf_csv,
@@ -62,17 +63,17 @@ def set_env(command_helper_instance, terminal_id, env_config):
     command_helper_instance.exec_command(
         terminal_id, f'export RANK_TABLE_FILE={env_config["RankTableFile"]}', wait_time=1)
     command_helper_instance.exec_command(
-        terminal_id, 'export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True', wait_time=1)
+        terminal_id, f'export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True', wait_time=1)
     command_helper_instance.exec_command(
-        terminal_id, 'export ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE=3', wait_time=1)
+        terminal_id, f'export ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE=3', wait_time=1)
     command_helper_instance.exec_command(
-        terminal_id, 'export NPU_MEMORY_FRACTION=0.96', wait_time=1)
+        terminal_id, f'export NPU_MEMORY_FRACTION=0.96', wait_time=1)
     command_helper_instance.exec_command(
         terminal_id, f'export MIES_CONTAINER_IP={env_config["ip"]}', wait_time=1)
     command_helper_instance.exec_command(
-        terminal_id, 'export HCCL_CONNECT_TIMEOUT=7200', wait_time=1)
+        terminal_id, f'export HCCL_CONNECT_TIMEOUT=7200', wait_time=1)
     command_helper_instance.exec_command(
-        terminal_id, 'HCCL_EXEC_TIMEOUT=0', wait_time=1)
+        terminal_id, f'HCCL_EXEC_TIMEOUT=0', wait_time=1)
 
 
 if __name__ == '__main__':
@@ -128,7 +129,7 @@ if __name__ == '__main__':
         command_helper_instance.exec_command(server_id[-1], f'docker start {container_name}', wait_time=5)
         command_helper_instance.exec_command(server_id[-1], f'docker exec -it {container_name} bash', wait_time=5)
         time.sleep(5)
-        print_to_screen('Check if slave node is in container using command `tmux attach -t <session-name>:2`')
+        print_to_screen(f'Check if slave node is in container using command `tmux attach -t <session-name>:2`')
         set_env(command_helper_instance, server_id[-1], env_config)
 
     results_of_performance_test = []

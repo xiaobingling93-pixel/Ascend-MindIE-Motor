@@ -11,6 +11,7 @@
 # See the Mulan PSL v2 for more details.
 
 import os
+import json
 import ipaddress
 from node_manager.common.utils import _SingletonMeta, validate_port_range
 from node_manager.common.logging import Log
@@ -41,12 +42,12 @@ class GeneralConfig(metaclass=_SingletonMeta):
     @staticmethod
     def _check_server_config_valid(config):
         if SERVER_CONFIG not in config:
-            raise KeyError("Invalid Server Engine Config File")
+            raise KeyError(f"Invalid Server Engine Config File")
         server_config = config[SERVER_CONFIG]
         if MANAGEMENT_PORT not in server_config:
-            raise KeyError("Management Port is Missing in Server Engine Config File")
+            raise KeyError(f"Management Port is Missing in Server Engine Config File")
         if "distDPServerEnabled" not in server_config or not isinstance(server_config["distDPServerEnabled"], bool):
-            raise KeyError("distDPServerEnabled is Missing or Invalid in Server Engine Config File")
+            raise KeyError(f"distDPServerEnabled is Missing or Invalid in Server Engine Config File")
 
     @staticmethod
     def _load_server_engine_ip():
@@ -55,7 +56,7 @@ class GeneralConfig(metaclass=_SingletonMeta):
             raise KeyError("[Config] Please Check Environment Variable Configuration of POD_IP")
         address = ipaddress.ip_address(pod_ip)
         if address.version != IPV4 and address.version != IPV6:
-            raise Exception('[Config] POD_IP is not ipv4 or ipv6.')
+            raise Exception(f'[Config] POD_IP is not ipv4 or ipv6.')
         return pod_ip
 
     @classmethod

@@ -10,6 +10,7 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
+import os
 import atexit
 import subprocess
 import argparse
@@ -18,6 +19,7 @@ import random
 from command_helper import CommandHelper
 from compile_utils import compile_mies, deployment
 from utils import (
+    PerfIndex,
     print_to_screen,
     load_config,
     extract_result_from_perf_csv,
@@ -116,7 +118,7 @@ if __name__ == '__main__':
     if args.compile or args.deployment:
         try:
             deployment(command_helper_instance, server_id, environment_config)
-        except Exception:
+        except Exception as e:
             print_to_screen('Deployment failed, please check the compile result and try again')
 
     results_of_performance_test = []
@@ -139,7 +141,7 @@ if __name__ == '__main__':
         # start service
         command_helper_instance.exec_command(server_id, f'export MIES_CONFIG_JSON_PATH={test_case["config_path"]}',
                                             wait_time=1)
-        command_helper_instance.exec_command(server_id, "mindie_llm_server",
+        command_helper_instance.exec_command(server_id, f"mindie_llm_server",
                                             True, wait_strs=["Daemon start success"], wait_time=180)
 
         # start client

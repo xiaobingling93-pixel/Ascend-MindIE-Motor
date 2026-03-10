@@ -42,13 +42,13 @@ class CollectHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         if self._check_valid_file(event):
-            self.logger.info("[OM Adapter] File %s is created" % event.src_path)
+            self.logger.info(f"[OM Adapter] File %s is created" % event.src_path)
             self.log_processor.watch_files[event.src_path] = LogFile(file_path=event.src_path)
             self.log_processor.modified_log_files.add(event.src_path)
 
     def on_modified(self, event):
         if self._check_valid_file(event):
-            self.logger.debug("[OM Adapter] File %s is modified", event.src_path)  # 文件内容更新频率高
+            self.logger.debug(f"[OM Adapter] File %s is modified", event.src_path)  # 文件内容更新频率高
             if event.src_path not in self.log_processor.watch_files:
                 self.log_processor.watch_files[event.src_path] = LogFile(file_path=event.src_path)
             self.log_processor.modified_log_files.add(event.src_path)
@@ -61,7 +61,7 @@ class CollectHandler(FileSystemEventHandler):
 
     def on_moved(self, event):
         if self._check_valid_file(event):
-            self.logger.info("[OM Adapter] File %s is changed to %s" % (event.src_path, event.dest_path))
+            self.logger.info(f"[OM Adapter] File %s is changed to %s" % (event.src_path, event.dest_path))
             src_log_file = self.log_processor.watch_files.pop(event.src_path, LogFile(file_path=event.dest_path))
             src_log_file.file_path = event.dest_path
             src_log_file.last_read_position = 0  # 文件轮转后，更新读取位置
@@ -72,10 +72,10 @@ class Collector:
     def __init__(self, collect_path=DEFAULT_COLLECT_PATH):
         self.logger = Log(__name__).getlog()
         if not collect_path:
-            err_msg = "[OM Adapter] Init log monitor failed, the collect_path is empty from config.json"
+            err_msg = f"[OM Adapter] Init log monitor failed, the collect_path is empty from config.json"
             self.logger.error(err_msg)
             raise Exception(err_msg)
-        self.logger.info("[OM Adapter] Log monitor path is %s" % collect_path)
+        self.logger.info(f"[OM Adapter] Log monitor path is %s" % collect_path)
 
         self.collect_handler = CollectHandler(collect_path)
         self.collect_observer = Observer()

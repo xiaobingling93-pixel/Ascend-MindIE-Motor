@@ -20,6 +20,7 @@ from node_manager.common.logging import Log
 from node_manager.models.enums import (
     EngineCmd,
     NodeRunningStatus,
+    ServiceStatus,
     ControllerCmd,
 )
 from node_manager.common.utils import _SingletonMeta
@@ -151,7 +152,7 @@ class FaultManager(metaclass=_SingletonMeta):
         """
         self.init_heartbeat_mng()
         self.logger.info(
-            "[_cmd_failed_further_action] Set running status = ABNORMAL"
+            f"[_cmd_failed_further_action] Set running status = ABNORMAL"
         )
         self.heartbeat_mng.set_running_status(NodeRunningStatus.ABNORMAL.value)
 
@@ -174,7 +175,7 @@ class FaultManager(metaclass=_SingletonMeta):
                 - status (bool): Whether the command was executed successfully.
                 - reason (str): Explanation of why the command succeeded or failed.
         """
-        self.logger.info("FaultManager: pause engine starts.")
+        self.logger.info(f"FaultManager: pause engine starts.")
         self.init_heartbeat_mng()
         _, after_state = self._find_matching_index(
             cmd=ControllerCmd.PAUSE_ENGINE.value,
@@ -191,14 +192,14 @@ class FaultManager(metaclass=_SingletonMeta):
                 ret_data = self._extract_info(ret_info_all, field=STATUS_STR)
                 if all(ret_data):
                     self.logger.info(
-                        "FaultManager: Successfully executed the PAUSE ENGINE cmd."
+                        f"FaultManager: Successfully executed the PAUSE ENGINE cmd."
                     )
                     # 发送请求成功,命令执行成功
                     return {STATUS_STR: True, REASON_STR: None}
                 else:
                     # 请求发送成功,命令执行有失败
                     self.logger.error(
-                        "FaultManager: PAUSE ENGINE cmd sent successfully, but the cmd execution failed."
+                        f"FaultManager: PAUSE ENGINE cmd sent successfully, but the cmd execution failed."
                     )
                     self._set_heartbeat_check_allowed(
                         True
@@ -213,7 +214,7 @@ class FaultManager(metaclass=_SingletonMeta):
             else:
                 # 请求发送失败
                 # status表明当前命令的执行状态是否成功
-                self.logger.error("FaultManager: Sending PAUSE ENGINE cmd failed.")
+                self.logger.error(f"FaultManager: Sending PAUSE ENGINE cmd failed.")
                 self._set_heartbeat_check_allowed(
                     True
                 )  # 默认下一步指令可能不发送cmd,启动心跳检测,kill异常pod
@@ -230,7 +231,7 @@ class FaultManager(metaclass=_SingletonMeta):
             }
 
     def _reinit_npu(self) -> dict:
-        self.logger.info("FaultManager: REINIT NPU starts.")
+        self.logger.info(f"FaultManager: REINIT NPU starts.")
         self.init_heartbeat_mng()
         _, after_state = self._find_matching_index(
             cmd=ControllerCmd.REINIT_NPU.value,
@@ -248,7 +249,7 @@ class FaultManager(metaclass=_SingletonMeta):
         else:
             # 不在pause_engine->reinit_npu->start_engine指令流中
             self.logger.error(
-                "not supported single cmd, must in pause_engine->reinit_npu->start_engine cmd stream"
+                f"not supported single cmd, must in pause_engine->reinit_npu->start_engine cmd stream"
             )
             return {
                 STATUS_STR: False,
@@ -264,13 +265,13 @@ class FaultManager(metaclass=_SingletonMeta):
             if all(ret_data):
                 # 发送请求成功,命令执行成功
                 self.logger.info(
-                    "FaultManager: Successfully executed the REINIT NPU cmd."
+                    f"FaultManager: Successfully executed the REINIT NPU cmd."
                 )
                 self.heartbeat_mng.set_running_status(after_state)
             else:
                 # 发送请求成功,命令执行有失败
                 self.logger.error(
-                    "FaultManager: REINIT NPU cmd sent successfully, but the cmd execution failed."
+                    f"FaultManager: REINIT NPU cmd sent successfully, but the cmd execution failed."
                 )
                 self._set_heartbeat_check_allowed(
                     True
@@ -299,7 +300,7 @@ class FaultManager(metaclass=_SingletonMeta):
 
 
     def _start_engine(self):
-        self.logger.info("FaultManager: start engine starts.")
+        self.logger.info(f"FaultManager: start engine starts.")
         self.init_heartbeat_mng()
         _, after_state = self._find_matching_index(
             cmd=ControllerCmd.START_ENGINE.value,
@@ -314,7 +315,7 @@ class FaultManager(metaclass=_SingletonMeta):
                 if all(ret_data):
                     # 发送请求成功,命令执行成功
                     self.logger.info(
-                        "FaultManager: Successfully executed the START ENGINE cmd."
+                        f"FaultManager: Successfully executed the START ENGINE cmd."
                     )
                     self._set_heartbeat_check_allowed(True)
                     self.heartbeat_mng.set_running_status(after_state)
@@ -322,7 +323,7 @@ class FaultManager(metaclass=_SingletonMeta):
                 else:
                     # 发送请求成功,命令执行有失败
                     self.logger.warning(
-                        "FaultManager: START ENGINE cmd sent successfully, but the cmd execution failed."
+                        f"FaultManager: START ENGINE cmd sent successfully, but the cmd execution failed."
                     )
                     self._set_heartbeat_check_allowed(
                         True
@@ -336,7 +337,7 @@ class FaultManager(metaclass=_SingletonMeta):
                     return {STATUS_STR: False, REASON_STR: reason_val_str}
             else:
                 # 请求发送失败
-                self.logger.warning("FaultManager: Sending START ENGINE cmd failed.")
+                self.logger.warning(f"FaultManager: Sending START ENGINE cmd failed.")
                 self._set_heartbeat_check_allowed(
                     True
                 )  # 默认server不下发下一步指令,启动心跳检测,kill异常pod

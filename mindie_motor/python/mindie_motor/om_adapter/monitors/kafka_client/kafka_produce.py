@@ -62,4 +62,4 @@ class KafkaProducer:
             self.logger.error("[OM Adapter] message send failed, the reason is: %s" % err)
         else:
             self.logger.debug(
-                "[OM Adapter] message send successfully topic=%s, partition=%s", msg.topic(), msg.partition())
+                f"[OM Adapter] message send successfully topic=%s, partition=%s", msg.topic(), msg.partition())

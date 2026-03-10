@@ -155,7 +155,7 @@ class CCAEMonitor(BaseMonitor):
                 "POST", url, headers=self.headers, body=json.dumps(inventory_json).encode())
             response_raise_for_status(response, "inventory")
             self.logger.debug("Response from inventory is: %s", response.data.decode())
-        except JSONDecodeError:
+        except JSONDecodeError as json_error:
             self.logger.error(f"Failed to decode inventory info: {inventories}")
         except Exception as e:
             self.logger.error(e)

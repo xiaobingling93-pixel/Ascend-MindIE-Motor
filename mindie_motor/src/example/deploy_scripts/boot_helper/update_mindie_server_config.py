@@ -57,30 +57,30 @@ class _FileUtils:
         :return: check_status[True or False], err_msg[if False], real_file_path[if True]
         """
         if not file_path or not isinstance(file_path, str):
-            err_msg = "The file path is empty or not a string type."
+            err_msg = f"The file path is empty or not a string type."
             return False, err_msg, None
 
         if not base_dir or not isinstance(base_dir, str):
-            err_msg = "The base dir path is empty or not a string type."
+            err_msg = f"The base dir path is empty or not a string type."
             return False, err_msg, None
 
         if len(file_path) > 1024:
-            err_msg = "The file path exceeds the maximum length."
+            err_msg = f"The file path exceeds the maximum length."
             return False, err_msg, None
 
         if not allow_symlink and os.path.islink(file_path):
-            err_msg = "The file path is a link."
+            err_msg = f"The file path is a link."
             return False, err_msg, None
 
         try:
             real_file_path = os.path.realpath(file_path)
-        except Exception:
-            err_msg = "Realpath parsing failed"
+        except Exception as e:
+            err_msg = f"Realpath parsing failed"
             return False, err_msg, None
 
         base_dir = base_dir if base_dir[-1] == "/" else base_dir + '/'
         if not cls.is_base_dir_path(base_dir, real_file_path):
-            err_msg = 'the file path is not in base dir'
+            err_msg = f'the file path is not in base dir'
             return False, err_msg, None
 
         return True, None, real_file_path
@@ -101,7 +101,7 @@ class _FileUtils:
         """
         # Check if the file exists
         if not cls.check_file_exists(file_path):
-            err_msg = "Error: File not found."
+            err_msg = f"Error: File not found."
             return False, err_msg
 
         # Get the real_file_path
@@ -118,7 +118,7 @@ class _FileUtils:
                 # Get the file size
                 file_size = fp.tell()
             if file_size < DEFAULT_MIN_FILE_SIZE or file_size > DEFAULT_MAX_FILE_SIZE:
-                err_msg = "Read input file failed, file size is invalid"
+                err_msg = f"Read input file failed, file size is invalid"
                 return False, err_msg
             return True, None
         except Exception as e:
@@ -130,7 +130,7 @@ class _FileUtils:
         try:
             file_stat = os.stat(file_path)
         except FileNotFoundError:
-            err_msg = "Error: File not found."
+            err_msg = f"Error: File not found."
             return False, err_msg
         except PermissionError:
             err_msg = f"Error: Permission denied to access file: {file_path}"
@@ -160,7 +160,7 @@ class _FileUtils:
         try:
             file_stat = os.stat(file_path)
         except FileNotFoundError:
-            err_msg = "Error: File not found."
+            err_msg = f"Error: File not found."
             return False, err_msg
 
         current_permissions = file_stat.st_mode & 0o777

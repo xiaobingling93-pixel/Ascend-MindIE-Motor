@@ -13,6 +13,7 @@
 import sys
 import json
 import os
+import time
 import logging
 from file_util import FileUtils
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +33,7 @@ def get_distribute_role():
     try:
         check_path_flag, err_msg, real_path = FileUtils.regular_file_path(rank_table_path)
         if not check_path_flag:
-            logging.error("check file path failed: %s", err_msg)
+            logger.error(f"check file path failed: %s", err_msg)
             return PARSE_ERROR
         with open(real_path, 'r', encoding='utf-8') as file:
             buf = file.read()

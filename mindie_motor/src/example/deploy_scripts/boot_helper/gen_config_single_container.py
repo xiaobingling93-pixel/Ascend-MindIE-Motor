@@ -153,12 +153,12 @@ def get_server_num():
         raise
 
     if (device_num % tp_num) != 0:
-        logger.error("device_num % tp_num must equal to 0.")
+        logger.error(f"device_num % tp_num must equal to 0.")
         raise ValueError("device_num % tp_num must equal to 0.")
     server_num = int(device_num / tp_num)
     if server_num < 1:
-        logger.error(f"server_num({server_num}) must be greater than 0.")
-        raise ValueError(f"server_num({server_num}) must be greater than 0.")
+        logger.error(f"server_num must be greater than 0.")
+        raise ValueError(f"server_num must be greater than 0.")
     return server_num
 
 
@@ -300,7 +300,7 @@ def check_server_config(config_file_path: str, server_id: int):
         try:
             update_port_value(config_file_path, f"server{server_id}_{port_name}", port_name, port)
         except Exception:
-            logger.error("Update port value failed.")
+            logger.error(f"Update port value failed.")
             raise
         if server_id == 1:
             PortHelper.cache_port(port_name, [g_ports_allocated[f"server{server_id}_{port_name}"]])
@@ -315,7 +315,7 @@ def get_coordinator_ip_from_config(config_path: str):
         ms_coordinator = load_json_file(ms_coordinator_path)
         return ms_coordinator["http_config"]["manage_ip"]
     except Exception:
-        logger.error("Get coordinator IP from config failed.")
+        logger.error(f"Get coordinator IP from config failed.")
         raise
 
 
@@ -331,7 +331,7 @@ def check_json_files(config_path: str, config_json_files: List[str], is_gen_serv
         manage_port = int(ms_coordinator["http_config"]["manage_port"])
         update_port_value(ms_coordinator_path, "coordinator_manage_port", "manage_port", manage_port)
     except Exception:
-        logger.error("Check and update ms_coordinator.json failed.")
+        logger.error(f"Check and update ms_coordinator.json failed.")
         raise
 
     try:
@@ -343,7 +343,7 @@ def check_json_files(config_path: str, config_json_files: List[str], is_gen_serv
         http_server_port = int(ms_controller["http_server"]["port"])
         update_port_value(ms_controller_path, "controller_http_server_port", "port", http_server_port)
     except Exception:
-        logger.error("Check and update ms_controller.json failed.")
+        logger.error(f"Check and update ms_controller.json failed.")
         raise
 
     # check and update server json files
@@ -393,11 +393,7 @@ def update_keys_in_json(config, config_key, config_value):
                 if config_key.lower() in must_string_key:
                     config[key] = config_value
                 else:
-                    config[key] = (
-                        json.loads(config_value) 
-                        if not isinstance(infer_type(config_value), str) 
-                        else config_value
-                    )
+                    config[key] = json.loads(config_value) if infer_type(config_value) != str else config_value
                 return (config, True)
 
             new_config, is_changed = update_keys_in_json(value, config_key, config_value)

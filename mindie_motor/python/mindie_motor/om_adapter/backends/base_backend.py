@@ -39,7 +39,7 @@ class BaseBackend(ABC):
     def fetch_log_messages(self):
         log_data = self.log_collector.collect_handler.log_processor.get_log_data(self.identity)
         if log_data is None:
-            self.logger.debug("No log data read from backend!")
+            self.logger.debug(f"No log data read from backend!")
             return None
         log_request_message = json.dumps(LogRequestMessage(log_data_list=[log_data], server_ip=get_local_ip()).format())
         self.logger.debug(f"Log data read from backend is: {log_request_message}")

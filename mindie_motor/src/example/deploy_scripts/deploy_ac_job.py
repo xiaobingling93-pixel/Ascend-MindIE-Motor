@@ -30,7 +30,7 @@ sys.path.append(os.getcwd())
 from gen_ranktable_helper.gen_global_ranktable import generate_global_ranktable
 from utils.file_utils import safe_open
 from utils.validate_config import validate_user_config
-from utils.validate_utils import validate_identifier, validate_path_part
+from utils.validate_utils import validate_identifier, validate_path_part, validate_command_part
 
 # 配置日志格式和级别
 logging.basicConfig(
@@ -299,7 +299,7 @@ def check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_p
         else:
             return f"{bytes_val} bytes"
 
-    logging.info("Coordinator memory config check:")
+    logging.info(f"Coordinator memory config check:")
     logging.info(f"  max_requests: {max_requests}")
     logging.info(f"  body_limit: {body_limit_mb} MB ({body_limit_bytes} bytes)")
     logging.info(f"  Theoretical max memory (with 20% margin): {format_bytes(theoretical_max_memory)}")
@@ -334,7 +334,7 @@ def check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_p
         )
         raise ValueError(error_msg)
 
-    logging.info("Memory config check passed.")
+    logging.info(f"Memory config check passed.")
 
 
 def check_config(config: dict):
@@ -1190,6 +1190,7 @@ def exec_cm_create_kubectl_multi(deploy_config, out_path):
 
 
 def exec_cm_elastic_kubectl(deploy_config, out_path):
+    job_id = deploy_config[CONFIG_JOB_ID]
     logging.info("Starting to execute kubectl update configmap elastic")
     exec_cmd("kubectl delete configmap scaling-rule" + NAME_FLAG + deploy_config[CONFIG_JOB_ID])
     exec_cmd("kubectl create configmap scaling-rule --from-file=" +

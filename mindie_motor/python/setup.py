@@ -46,7 +46,7 @@ def use_cxx11_abi() -> str:
             logging.info(f"Detect ABI from torch, set GLOBAL_ABI_VERSION to {abi}")
             return abi
     except Exception:
-        logging.warning("No torch detected on current environment.")
+        logging.warning(f"No torch detected on current environment.")
 
     # 3. Fallback to "0" with warning
     abi = "0"

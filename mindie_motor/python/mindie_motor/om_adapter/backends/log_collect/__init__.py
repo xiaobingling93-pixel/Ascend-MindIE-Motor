@@ -10,7 +10,5 @@
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
 
-__all__ = ['Collector', 'LogRequestMessage']
-
 from .log_collector import Collector
 from .data_class import LogRequestMessage

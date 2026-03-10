@@ -37,7 +37,7 @@ def __is_npu_health():
         return False
     check_file_flag = FileUtils.is_symlink(yaml_file)
     if check_file_flag:
-        logger.error("The path is a symbolic file.")
+        logger.error(f"The path is a symbolic file.")
         return False
     try:
         with open(yaml_file, 'r', encoding='utf-8') as file:

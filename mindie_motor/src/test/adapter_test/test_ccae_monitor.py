@@ -78,7 +78,7 @@ class TestCCAEMonitor(unittest.TestCase):
                 }
             }]
         }
-        with patch("urllib3.PoolManager.request", return_value=MockResponse(json.dumps(mock_heartbeat_response))):
+        with patch("urllib3.PoolManager.request", return_value=MockResponse(json.dumps(mock_heartbeat_response))) as p:
             self.ccae_monitor.send_heart_beat()
             self.assertTrue(self.ccae_monitor.model_id_period[MODEL_ID][0])
             self.assertEqual(self.ccae_monitor.model_id_period[MODEL_ID][1], 2)
@@ -89,8 +89,8 @@ class TestCCAEMonitor(unittest.TestCase):
             "alarmId": "this is a new alarm"
         }]
         with patch.object(AbstractShareMemoryUtil, "read",
-                          return_value=json.dumps(single_alarm_info)):
-            with patch("urllib3.PoolManager.request", return_value=MockResponse("OK")):
+                          return_value=json.dumps(single_alarm_info)) as shm_read_p:
+            with patch("urllib3.PoolManager.request", return_value=MockResponse("OK")) as response_p:
                 self.ccae_monitor.upload_alarm(self.ccae_monitor.backend.fetch_alarm_info()[0])
                 self.assertEqual(self.ccae_monitor.alarm_cache["this is a new alarm"], single_alarm_info[0])
                 self.assertEqual(self.ccae_monitor.fetch_alarm_cache(), single_alarm_info)
@@ -101,12 +101,12 @@ class TestCCAEMonitor(unittest.TestCase):
             "alarmId": "this is a cancel alarm"
         }]
         with patch.object(AbstractShareMemoryUtil, "read",
-                          return_value=json.dumps(single_alarm_info)):
-            with patch("urllib3.PoolManager.request", return_value=MockResponse("OK")):
+                          return_value=json.dumps(single_alarm_info)) as shm_read_p:
+            with patch("urllib3.PoolManager.request", return_value=MockResponse("OK")) as response_p:
                 self.ccae_monitor.upload_alarm(self.ccae_monitor.backend.fetch_alarm_info()[0])
                 self.assertEqual(len(self.ccae_monitor.alarm_cache), 0)
 
     def test_upload_inventory(self):
-        with patch("urllib3.PoolManager.request", return_value=MockResponse("OK")):
+        with patch("urllib3.PoolManager.request", return_value=MockResponse("OK")) as p:
             self.assertIsNone(self.ccae_monitor.upload_inventory(str({"inventory": None})))
 

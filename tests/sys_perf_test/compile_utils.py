@@ -45,7 +45,7 @@ def wait_compile_complete(command_helper_instance: CommandHelper, output_path: s
     while retry_times > 0:
         time.sleep(30 * ONE_SEC)
         if has_output_file(command_helper_instance, output_path, terminal_id):
-            print_to_screen('Compile completed.')
+            print_to_screen(f'Compile completed.')
             break
         retry_times -= 1
     if retry_times == 0: 
@@ -69,7 +69,7 @@ def compile_mies(command_helper_instance: CommandHelper, compile_config: dict):
     # compile service
     # prepare dependency
     command_helper_instance.exec_command(compiler_id, f'cd {mies_repo_path}', wait_time=1)
-    command_helper_instance.exec_command(compiler_id, 'mkdir -p third_party/install/MindIE-LLM', wait_time=1)
+    command_helper_instance.exec_command(compiler_id, f'mkdir -p third_party/install/MindIE-LLM', wait_time=1)
     unpackage_mindie_llm = f'bash {compile_config["mindie_llm_run_path"]} --extract=third_party/install/MindIE-LLM'
     command_helper_instance.exec_command(compiler_id, unpackage_mindie_llm, wait_time=1)
     command_helper_instance.exec_command(

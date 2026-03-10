@@ -118,10 +118,10 @@ def _create_log_file(log_file):
     else:
         clean_path = os.path.normpath(log_file)
         if os.path.islink(clean_path):
-            err_msg = "Check log file path failed because it's a symbolic."
+            err_msg = f"Check log file path failed because it's a symbolic."
             raise ValueError(err_msg)
         if len(clean_path) > 1024:
-            err_msg = "Path of log file is too long, it should not exceed 1024 character."
+            err_msg = f"Path of log file is too long, it should not exceed 1024 character."
             raise ValueError(err_msg)
     os.chmod(log_file, mode)
 

@@ -13,6 +13,7 @@
 import ipaddress
 import os
 import socket
+import ssl
 
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
@@ -22,6 +23,7 @@ from node_manager.common.utils import _SingletonMeta
 from node_manager.routes.server_api import router
 from node_manager.common.logging import Log
 from node_manager.framework.utils import CertUtil
+from node_manager.framework.utils.cert_utils import CA_CERTS, TLS_CERT, TLS_KEY
 
 logger = Log(__name__).getlog()
 

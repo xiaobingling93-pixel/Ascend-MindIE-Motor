@@ -12,6 +12,8 @@
 
 import os
 import stat
+import ctypes
+from ctypes import c_char_p
 
 from om_adapter.common.util import PathCheck, safe_open
 from om_adapter.common.logging import Log
@@ -34,7 +36,7 @@ def _check_invalid_ssl_filesize(ssl_options):
     def check_size(path: str):
         size = os.path.getsize(path)
         if size > max_size:
-            raise RuntimeError("SSL file should not exceed 10MB!")
+            raise RuntimeError(f"SSL file should not exceed 10MB!")
 
     max_size = 10 * 1024 * 1024  # 最大文件大小为10MB
     for ssl_key in SSL_MUST_KEYS:

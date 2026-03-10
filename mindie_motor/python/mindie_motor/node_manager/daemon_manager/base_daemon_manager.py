@@ -80,7 +80,7 @@ class BaseDaemonManager(ABC):
         try:
             pid, status = os.waitpid(-1, os.WNOHANG)
         except OSError:
-            self.logger.error("No more child processes")
+            self.logger.error(f"No more child processes")
             return
         exit_flag = pid > 0
         while pid > 0:

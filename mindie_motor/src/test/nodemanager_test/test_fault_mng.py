@@ -19,10 +19,12 @@ sys.path.append(
 )
 import unittest
 from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock
 import logging
 
 import requests
 
+from node_manager.models import NodeRunningStatus
 from node_manager.core.fault_mng import fault_manager
 from node_manager.models.enums import NodeRunningStatus
 
@@ -74,6 +76,7 @@ class TestFaultManager(unittest.TestCase):
 
         # 下发命令 reinit npu
         self._set_response_data(mocked_request, 200, mock_data)
+        ret_true = {status_str: True, "reason": None}
         func = self.fault_manager.get_handler("REINIT_NPU")
         response = func()
         sleep(8)

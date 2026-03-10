@@ -45,7 +45,7 @@ class TestLogDataProcessor(unittest.TestCase):
         self.log_processor = LogDataProcessor()
         self.log_processor.watch_files[self.filename] = LogFile(self.filename)
         self.log_processor.modified_log_files.add(self.filename)
-        with patch.object(PathCheck, 'check_path_full', return_value=(True, None)):
+        with patch.object(PathCheck, 'check_path_full', return_value=(True, None)) as mock_fuc:
             # 首次读文件
             log_data = self.log_processor.get_log_data(component)
             self.assertEqual(log_data.component_type, component)
