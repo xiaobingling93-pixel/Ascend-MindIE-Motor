@@ -626,6 +626,6 @@ void TryUpdateTokenDistributionFromUsage(const std::string& body)
         }
         token_distribution[inputRange][outputRange]++;
     } catch (const nlohmann::json::exception &) {
+        // Invalid JSON or missing usage fields, skip update
     }
-}
 }
