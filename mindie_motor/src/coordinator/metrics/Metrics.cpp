@@ -628,4 +628,4 @@ void TryUpdateTokenDistributionFromUsage(const std::string& body)
     } catch (const nlohmann::json::exception &) {
         // Invalid JSON or missing usage fields, skip update
     }
-}
+}}
