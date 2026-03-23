@@ -198,13 +198,13 @@ TEST_F(TestNPURecoveryManager, TestProcessFaultMessageWhenNPURecoveryDisabled)
 }
 
 /*
- * 测试描述: 测试不开roce恢复功能时，故障消息被忽略
+ * 测试描述: 测试不开oom恢复功能时，故障消息被忽略
  */
 TEST_F(TestNPURecoveryManager, TestProcessLLMEngineAlarmWhenRecoveryFunctionDisabled)
 {
     auto testJson = GetServerRequestHandlerTestJsonPath();
-    ModifyJsonItem(testJson, "fault_recovery_func_dict", "hbm", false);
     ModifyJsonItem(testJson, "fault_recovery_func_dict", "oom", false);
+    ModifyJsonItem(testJson, "fault_recovery_func_dict", "hbm", false);
     ControllerConfig::GetInstance()->Init();
 
     uint64_t nodeId = 100;
@@ -215,11 +215,11 @@ TEST_F(TestNPURecoveryManager, TestProcessLLMEngineAlarmWhenRecoveryFunctionDisa
     nlohmann::json alarmJson;
     alarmJson["node_manager_ip"] = ip;
     alarmJson["alarm_info"] = nlohmann::json::array({ nlohmann::json::array({
-        nlohmann::json::object({{"errCode", "MIE05E01001B"}, {"errorLocation", "0:0"}})
+        nlohmann::json::object({{"errCode", "MIE05E01000A"}, {"errorLocation", "0:0"}})
     })});
     NPURecoveryManager::GetInstance()->ProcessLLMEngineAlarm(alarmJson);
 
-    // 关闭 RoCE 时只发 STOP_ENGINE 并 return，不会 Insert(instanceId)，故列表为空
+    // 关闭 oom 时只发 STOP_ENGINE 并 return，不会 Insert(instanceId)，故列表为空
     auto errCodeAlarmExisted = NPURecoveryManager::GetInstance()->GetErrCodeAlarmExisted();
     EXPECT_EQ(errCodeAlarmExisted.size(), 0);
 }
@@ -434,7 +434,8 @@ TEST_F(TestNPURecoveryManager, TestProcessCQEFaultWithCQECode)
 
     NPURecoveryManager::GetInstance()->ProcessFaultMessage(faultMsg);
 
-    // ProcessRoCERecovery 在 NodeScheduler 为 null 时会发送 STOP_ENGINE 并 Erase，恢复队列应为空
+    // ProcessRoCERecovery 异步执行，NodeScheduler 为 null 时会在后台 Erase，需等待完成后断言
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     auto instancesInRecovery = NPURecoveryManager::GetInstance()->GetInstancesInRecovery();
     EXPECT_EQ(instancesInRecovery.size(), 0);
 }
@@ -503,6 +504,8 @@ TEST_F(TestNPURecoveryManager, TestProcessCQEFaultMultiNodeInstance)
 
     NPURecoveryManager::GetInstance()->ProcessFaultMessage(faultMsg);
 
+    // ProcessRoCERecovery 异步执行，需等待完成后断言
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     auto instancesInRecovery = NPURecoveryManager::GetInstance()->GetInstancesInRecovery();
     EXPECT_EQ(instancesInRecovery.size(), 0);
 }
@@ -527,6 +530,8 @@ TEST_F(TestNPURecoveryManager, TestProcessCQEFaultInstanceAlreadyInRecovery)
     NPURecoveryManager::GetInstance()->ProcessFaultMessage(faultMsg);
     NPURecoveryManager::GetInstance()->ProcessFaultMessage(faultMsg);
 
+    // ProcessRoCERecovery 异步执行，需等待完成后断言
+    std::this_thread::sleep_for(std::chrono::seconds(2));
     auto instancesInRecovery = NPURecoveryManager::GetInstance()->GetInstancesInRecovery();
     EXPECT_EQ(instancesInRecovery.size(), 0);
 }

@@ -12,6 +12,8 @@
 #ifndef MINDIE_MS_NPU_RECOVERY_MANAGER_H
 #define MINDIE_MS_NPU_RECOVERY_MANAGER_H
 
+#include <deque>
+#include <future>
 #include <memory>
 #include <string>
 #include <vector>
@@ -159,8 +161,6 @@ private:
 
     // 故障码为全量上报, 按vector顺序决定优先级(靠前优先), 只执行第一个匹配的快恢流程函数
     std::vector<ErrCodeProcessor> mErrCodeProcessors = {
-        {"MIE05E01001B", "roce", LLMEngineFaultReason::TEXT_GENERATOR_PD_PULL_KV_ERROR,
-            std::bind(&NPURecoveryManager::PullKVRecoveryHandler, this, std::placeholders::_1)},
         {"MIE05E01000A", "oom", LLMEngineFaultReason::TEXT_GENERATOR_OUT_OF_MEMORY,
             std::bind(&NPURecoveryManager::OOMRecoveryHandler, this, std::placeholders::_1)},
         {"MIE05E01000B", "hbm", LLMEngineFaultReason::HBM_MULTI_BIT_ERROR,
@@ -179,6 +179,10 @@ private:
     std::atomic<bool> mCoordinatorReadyChecked{false};
     // Coordinator 未 ready 时的故障队列
     ConcurrentSet<std::string> mCoordinatorNotReadyFaults;
+
+    // RoCE 异步恢复：ClusterClient callback同步阻塞，通过std::async+保存future使callback快速返回。
+    std::deque<std::future<void>> mRoCERecoveryFutures;
+    void PruneCompletedRoCEFutures();
     
     // NPU恢复相关方法
     void StartGlobalNPUPolling();
@@ -207,13 +211,13 @@ private:
     bool IsNonRecoverableErrCodeExists(const nlohmann::json& errorInfo);
     bool IsErrCodeExists(const nlohmann::json& errorInfo, const std::string& errCode);
     std::string GetErrorLocationStr(const nlohmann::json& errorInfo, const std::string& errCode);
-    void ReportLLMEngineAlarm(uint64_t instanceId, const nlohmann::json& errorInfo,
-        const std::string& errCode, LLMEngineFaultReason faultReason);
+    std::string GetErrorLocationStrFromFaultMsg(const fault::FaultMsgSignal& faultMsg,
+        uint64_t instanceId, const std::string& targetErrCode);
+    void ReportLLMEngineAlarm(const std::string& errorLocationStr, LLMEngineFaultReason faultReason);
     std::set<std::string> GetNonRecoverableErrCodes(const nlohmann::json& errorInfo);
     void OOMRecoveryHandler(uint64_t instanceId);
 
     // RoCE 故障恢复相关方法
-    void PullKVRecoveryHandler(uint64_t instanceId);
     void ProcessCQEFault(const fault::FaultMsgSignal& faultMsg);
     std::unordered_set<uint64_t> GetCQEInstanceIdsFromFaultMessage(const fault::FaultMsgSignal& faultMsg);
     void ProcessRoCERecovery(uint64_t instanceId,

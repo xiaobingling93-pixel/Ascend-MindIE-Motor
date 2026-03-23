@@ -1347,12 +1347,16 @@ bool NodeScheduler::BatchUnlinkNodes(const std::vector<uint64_t> &nodeIds)
     std::sort(postId.begin(), postId.end());
     postId.erase(std::unique(postId.begin(), postId.end()), postId.end());
     ServerRequestHandler::GetInstance()->BatchPostRole(*mServerClient, *mNodeStatus, postId, success);
-    LOG_I("[NodeScheduler]BatchUnlinkNodes: BatchPostRole done, success %zu / postId %zu.",
-          success.size(), postId.size());
+    if (success.size() != postId.size()) {
+        LOG_E("[NodeScheduler]BatchUnlinkNodes: Not all nodes unlinked, success %zu / postId %zu.",
+            success.size(), postId.size());
+        return false;
+    }
+    LOG_I("[NodeScheduler]BatchUnlinkNodes: BatchPostRole successfully unlinked %zu nodes", success.size());
     return true;
 }
 
-bool NodeScheduler::BatchLinkNodes(const std::vector<uint64_t> &nodeIds)
+bool NodeScheduler::BatchLinkNodes(const std::vector<uint64_t> &nodeIds, uint32_t maxCheckAttempts)
 {
     std::set<uint64_t> groupIds;
     for (uint64_t nodeId : nodeIds) {
@@ -1389,7 +1393,14 @@ bool NodeScheduler::BatchLinkNodes(const std::vector<uint64_t> &nodeIds)
     postId.erase(std::unique(postId.begin(), postId.end()), postId.end());
 
     ServerRequestHandler::GetInstance()->BatchPostRole(*mServerClient, *mNodeStatus, postId, success);
-    auto readyIds = ServerRequestHandler::GetInstance()->CheckStatus(*mServerClient, *mNodeStatus, postId, false);
+    if (success.size() != postId.size()) {
+        LOG_E("[NodeScheduler]BatchLinkNodes: Not all nodes linked, success %zu / postId %zu.",
+            success.size(), postId.size());
+        return false;
+    }
+    
+    auto readyIds = ServerRequestHandler::GetInstance()->CheckStatus(*mServerClient, *mNodeStatus, postId, false,
+        maxCheckAttempts);
     if (readyIds.size() < postId.size()) {
         LOG_E("[NodeScheduler]BatchLinkNodes: CheckStatus not ready, count %zu", postId.size() - readyIds.size());
         return false;
@@ -1407,8 +1418,10 @@ bool NodeScheduler::ProcessBatchUnlinkAndLink(const std::vector<uint64_t> &nodeI
         LOG_E("[NodeScheduler]ProcessBatchUnlinkAndLink: BatchUnlinkNodes failed");
         return false;
     }
-    if (!BatchLinkNodes(nodeIds)) {
-        LOG_E("[NodeScheduler]ProcessBatchUnlinkAndLink: BatchLinkNodes failed");
+    // RoCE 恢复使用较短超时(10 次 * 5s ≈ 50s)，避免长时间阻塞导致无法下发 STOP_ENGINE
+    constexpr uint32_t roceCheckStatusAttempts = 10;
+    if (!BatchLinkNodes(nodeIds, roceCheckStatusAttempts)) {
+        LOG_E("[NodeScheduler]ProcessBatchUnlinkAndLink: BatchLinkNodes failed (CheckStatus not ready)");
         return false;
     }
     LOG_I("[NodeScheduler]BatchUnlinkAndLink done");

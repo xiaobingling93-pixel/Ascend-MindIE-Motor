@@ -39,8 +39,6 @@ constexpr int64_t FAULT_TIMESTAMP_THRESHOLD_MILLISECONDS = 5000;
 constexpr int STALE_FAULT_THRESHOLD_MILLISECONDS = 52000;
 constexpr uint64_t INVALID_ID = UINT64_MAX;
 constexpr int PREFILL_ISOLATION_TIMEOUT_SECONDS = 52; // PREFILL实例隔离恢复时间
-// Unlink/Link 后等待建链与 GET/status 上报完整 activePeers 再 START_ENGINE，避免「node not linked to peer」
-constexpr int LINK_RECOVERY_DELAY_SECONDS = 5;
 // 虚推失败故障码(health_checker上报的071106)，与Python侧heartbeat_mng保持一致
 constexpr const char* SIMULATE_FAILED_ERROR_CODE_PREFIX = "[MIE04E071106] ";
 
@@ -133,7 +131,7 @@ void NPURecoveryManager::ProcessLLMEngineAlarm(const nlohmann::json& alarmJson)
                 LOG_I("[NPURecoveryManager] Non-recoverable error code %s in instance %lu, "
                     "fault reason: for unknown reason", errCode.c_str(), instanceId);
             }
-            ReportLLMEngineAlarm(instanceId, errorInfo, errCode, faultReason);
+            ReportLLMEngineAlarm(GetErrorLocationStr(errorInfo, errCode), faultReason);
         }
         return;
     }
@@ -151,12 +149,12 @@ void NPURecoveryManager::ProcessLLMEngineAlarm(const nlohmann::json& alarmJson)
                 return;
             }
             
-            LOG_I("[NPURecoveryManager] Start %s recovery to handle error code %s in instance %lu",
+            LOG_I("[NPURecoveryManager] Start %s recovery handler for error code %s in instance %lu",
                 processor.recoveryFuncKey.c_str(), processor.errCode.c_str(), instanceId);
 
             // 根据 processor.faultReason上报故障告警
             if (mErrCodeAlarmExisted.Insert(instanceId)) {
-                ReportLLMEngineAlarm(instanceId, errorInfo, processor.errCode, processor.faultReason);
+                ReportLLMEngineAlarm(GetErrorLocationStr(errorInfo, processor.errCode), processor.faultReason);
             }
             processor.handler(instanceId);
             return;
@@ -190,10 +188,9 @@ std::set<std::string> NPURecoveryManager::GetNonRecoverableErrCodes(const nlohma
     return nonRecoverableErrCodes;
 }
 
-void NPURecoveryManager::ReportLLMEngineAlarm(uint64_t instanceId, const nlohmann::json& errorInfo,
-    const std::string& errCode, LLMEngineFaultReason faultReason)
+void NPURecoveryManager::ReportLLMEngineAlarm(const std::string& errorLocationStr,
+    LLMEngineFaultReason faultReason)
 {
-    std::string errorLocationStr = GetErrorLocationStr(errorInfo, errCode);
     std::string alarmsString = AlarmRequestHandler::GetInstance()->FillLLMEngineAlarmInfo(
         AlarmCategory::ALARM_CATEGORY_EVENT,
         faultReason,
@@ -256,12 +253,6 @@ void NPURecoveryManager::OOMRecoveryHandler(uint64_t instanceId)
 }
 
 /******************以下是Roce故障恢复相关方法********************************/
-void NPURecoveryManager::PullKVRecoveryHandler(uint64_t instanceId)
-{
-    LOG_I("[NPURecoveryManager] Caught pull kv error for instance %lu, wait for roce recovery.", instanceId);
-}
-
-
 void NPURecoveryManager::ProcessCQEFault(const fault::FaultMsgSignal& faultMsg)
 {
     std::unordered_set<uint64_t> cqeInstanceIds = GetCQEInstanceIdsFromFaultMessage(faultMsg);
@@ -269,7 +260,7 @@ void NPURecoveryManager::ProcessCQEFault(const fault::FaultMsgSignal& faultMsg)
         LOG_D("[NPURecoveryManager] No CQE instances found, skipping");
         return;
     }
-    LOG_I("[NPURecoveryManager] %zu CQE instances found, start RoCE recovery", cqeInstanceIds.size());
+    LOG_I("[NPURecoveryManager] Found %zu CQE instances", cqeInstanceIds.size());
 
     static const std::vector<FaultNodeInfo> kEmptyFaultNodes;
 
@@ -281,11 +272,31 @@ void NPURecoveryManager::ProcessCQEFault(const fault::FaultMsgSignal& faultMsg)
         std::vector<uint64_t> instanceNodeIds = GetAllNodesInInstance(instanceId);
         std::unordered_set<std::string> instancePodIPs = GetAllPodIPsInInstance(instanceId);
         if (instanceNodeIds.empty() || instancePodIPs.empty()) {
-            LOG_D("[NPURecoveryManager] No nodes found for instance %lu, skipping CQE", instanceId);
+            LOG_D("[NPURecoveryManager] No nodes or pods found for instance %lu, skipping CQE", instanceId);
             continue;
         }
-        LOG_I("[NPURecoveryManager] CQE instance %lu, starting ProcessRoCERecovery", instanceId);
-        ProcessRoCERecovery(instanceId, kEmptyFaultNodes, instanceNodeIds, instancePodIPs);
+        // ProcessRoCERecovery 前上报 CQE/RoCE 故障事件告警
+        std::string errorLocationStr = GetErrorLocationStrFromFaultMsg(faultMsg, instanceId, "4C1F8608");
+        ReportLLMEngineAlarm(errorLocationStr, LLMEngineFaultReason::TEXT_GENERATOR_PD_PULL_KV_ERROR);
+        LOG_I("[NPURecoveryManager] CQE instance %lu, starting RoCE recovery process", instanceId);
+        auto future = std::async(std::launch::async, [this, instanceId, instanceNodeIds, instancePodIPs]() {
+            ProcessRoCERecovery(instanceId, kEmptyFaultNodes, instanceNodeIds, instancePodIPs);
+        });
+        PruneCompletedRoCEFutures();
+        mRoCERecoveryFutures.push_back(std::move(future));
+    }
+}
+
+void NPURecoveryManager::PruneCompletedRoCEFutures()
+{
+    auto it = mRoCERecoveryFutures.begin();
+    while (it != mRoCERecoveryFutures.end()) {
+        if (it->wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            it = mRoCERecoveryFutures.erase(it);
+            LOG_D("[NPURecoveryManager] RoCE recovery future erased.");
+        } else {
+            ++it;
+        }
     }
 }
 
@@ -313,8 +324,40 @@ std::unordered_set<uint64_t> NPURecoveryManager::GetCQEInstanceIdsFromFaultMessa
             }
         }
     }
-    LOG_I("[NPURecoveryManager] Found %zu CQE instances", cqeInstanceIds.size());
     return cqeInstanceIds;
+}
+
+std::string NPURecoveryManager::GetErrorLocationStrFromFaultMsg(const fault::FaultMsgSignal& faultMsg,
+    uint64_t instanceId, const std::string& targetErrCode)
+{
+    std::set<std::string> locations;
+    for (const auto& nodeInfo : faultMsg.nodefaultinfo()) {
+        if (GetInstanceIdByNodeIP(nodeInfo.nodeip()) != instanceId) {
+            continue;
+        }
+        for (const auto& device : nodeInfo.faultdevice()) {
+            for (const auto& code : device.faultcodes()) {
+                if (code == targetErrCode) {
+                    locations.insert(nodeInfo.nodeip());
+                }
+            }
+            for (const auto& sfi : device.switchfaultinfos()) {
+                if (sfi.faultcode() == targetErrCode) {
+                    locations.insert(nodeInfo.nodeip());
+                }
+            }
+        }
+    }
+    std::string result;
+    bool isFirst = true;
+    for (const auto& loc : locations) {
+        if (!isFirst) {
+            result += ", ";
+        }
+        result += loc;
+        isFirst = false;
+    }
+    return result;
 }
 
 void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
@@ -328,8 +371,7 @@ void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
         return;
     }
 
-    LOG_I("[NPURecoveryManager] Processing instance %lu with ROCE recovery, %zu fault nodes",
-          instanceId, faultNodes.size());
+    LOG_I("[NPURecoveryManager] Processing instance %lu with ROCE recovery", instanceId);
 
     // 将该实例的所有节点设置为不可用
     for (uint64_t nodeId : instanceNodeIds) {
@@ -342,7 +384,6 @@ void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
         LOG_I("[NPURecoveryManager] PAUSE_ENGINE_ROCE failed for instance %lu, aborting recovery process", instanceId);
         (void)SendNodeManagerCommandToPodsParallel(instancePodIPs, instanceId, NodeManagerCmd::STOP_ENGINE);
         mInstanceRecoveryInfo.Erase(instanceId);
-        mErrCodeAlarmExisted.Erase(instanceId);
         LOG_I("[NPURecoveryManager] Removed instance %lu from recovery queue (PAUSE_ENGINE_ROCE failed)", instanceId);
         return;
     }
@@ -352,10 +393,14 @@ void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
         LOG_E("[NPURecoveryManager] NodeScheduler is null, send STOP_ENGINE to instance %lu", instanceId);
         (void)SendNodeManagerCommandToPodsParallel(instancePodIPs, instanceId, NodeManagerCmd::STOP_ENGINE);
         mInstanceRecoveryInfo.Erase(instanceId);
-        mErrCodeAlarmExisted.Erase(instanceId);
         LOG_I("[NPURecoveryManager] Removed instance %lu from recovery queue (NodeScheduler not set)", instanceId);
         return;
     }
+
+    // 等待 LLM 侧 PAUSE_ENGINE_ROCE 生效后再执行 unlink/link，避免过早下发 role 导致异常
+    constexpr uint32_t extraWaitSeconds = 5;
+    LOG_I("[NPURecoveryManager] ProcessRoCERecovery: wait %u seconds before BatchUnlinkAndLink.", extraWaitSeconds);
+    std::this_thread::sleep_for(std::chrono::seconds(extraWaitSeconds));
 
     LOG_I("[NPURecoveryManager] PD link reestablishment for instance %lu", instanceId);
     if (!mNodeScheduler->ProcessBatchUnlinkAndLink(instanceNodeIds)) {
@@ -363,22 +408,15 @@ void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
             instanceNodeIds.size(), instanceId);
         (void)SendNodeManagerCommandToPodsParallel(instancePodIPs, instanceId, NodeManagerCmd::STOP_ENGINE);
         mInstanceRecoveryInfo.Erase(instanceId);
-        mErrCodeAlarmExisted.Erase(instanceId);
         LOG_I("[NPURecoveryManager] Removed instance %lu from recovery queue (UnlinkAndLink failed)", instanceId);
         return;
     }
 
-    // 延迟后再 START_ENGINE 与 RestoreInstanceNodeAvailability，给服务端时间建链并让 GET/status 上报完整 activePeers
-    LOG_I("[NPURecoveryManager] Instance %lu: wait %d s for link establishment before START_ENGINE", instanceId,
-          LINK_RECOVERY_DELAY_SECONDS);
-    std::this_thread::sleep_for(std::chrono::seconds(LINK_RECOVERY_DELAY_SECONDS));
-
     // RoCE 路径仅做 PAUSE + Unlink/Link，未对 NPU 做 REINIT，无需轮询 NPU 就绪，直接下发 START_ENGINE
+    LOG_I("[NPURecoveryManager] Instance %lu in ROCE recovery, START_ENGINE sent - %zu nodes, %zu pods",
+        instanceId, instanceNodeIds.size(), instancePodIPs.size());
     RecoverInstanceServiceWithPodIPs(instanceId, instancePodIPs);
     mInstanceRecoveryInfo.Erase(instanceId);
-    mErrCodeAlarmExisted.Erase(instanceId);
-    LOG_I("[NPURecoveryManager] Instance %lu ROCE recovery completed, START_ENGINE sent - %zu nodes, %zu pods",
-          instanceId, instanceNodeIds.size(), instancePodIPs.size());
 }
 
 /******************以下是灵衢故障恢复相关方法********************************/
@@ -386,8 +424,10 @@ void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
 // 故障消息处理主入口
 void NPURecoveryManager::ProcessFaultMessage(const fault::FaultMsgSignal &faultMsg)
 {
-    if (!(ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("lingqu_link"))) {
-        LOG_I("[NPURecoveryManager] Skip processing fault message");
+    bool lingquLinkEnabled = ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("lingqu_link");
+    bool roceEnabled = ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("roce");
+    if (!lingquLinkEnabled && !roceEnabled) {
+        LOG_I("[NPURecoveryManager] Skip processing fault message (lingqu_link and roce both disabled)");
         return;
     }
     LOG_D("[NPURecoveryManager] Entry point: Processing fault message");
@@ -425,16 +465,18 @@ void NPURecoveryManager::ProcessFaultMessage(const fault::FaultMsgSignal &faultM
         return;
     }
     
-    // CQE 与灵衢解耦：仅根据故障消息识别含 CQE 的实例并直接 RoCE 恢复，不依赖灵衢的 faultyInstances
-    LOG_I("[NPURecoveryManager] Processing CQE fault message");
-    ProcessCQEFault(faultMsg);
-    
-    if (faultyInstances.empty()) {
-        LOG_I("[NPURecoveryManager] No instances require lingqu fault recovery");
-        return;
+    if (roceEnabled) {
+        LOG_I("[NPURecoveryManager] Processing CQE fault message");
+        ProcessCQEFault(faultMsg);
     }
-    LOG_D("[NPURecoveryManager] Found %zu instances requiring lingqu fault recovery", faultyInstances.size());
-    ProcessInstanceFaults(faultyInstances);
+    if (lingquLinkEnabled) {
+        if (faultyInstances.empty()) {
+            LOG_D("[NPURecoveryManager] No instances require lingqu fault recovery");
+            return;
+        }
+        LOG_D("[NPURecoveryManager] Found %zu instances requiring lingqu fault recovery", faultyInstances.size());
+        ProcessInstanceFaults(faultyInstances);
+    }
 }
 
 std::unordered_map<uint64_t, std::vector<FaultNodeInfo>> NPURecoveryManager::FindFaultyInstances(
