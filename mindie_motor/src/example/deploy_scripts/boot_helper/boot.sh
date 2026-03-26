@@ -60,9 +60,9 @@ if [ $# -eq 0 ]; then
     fi
     if [ $exit_code -eq 2 ]; then
         if [ -n "$CONFIG_FROM_CONFIGMAP_PATH" ]; then
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/config.json" "$CONFIG_DIR/config.json"
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/node_manager.json" "$CONFIG_DIR/node_manager.json"
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/http_client_ctl.json" "$CONFIG_DIR/http_client_ctl.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/config.json" "$CONFIG_DIR/config.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/node_manager.json" "$CONFIG_DIR/node_manager.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/http_client_ctl.json" "$CONFIG_DIR/http_client_ctl.json"
         fi
         export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/Ascend/driver/lib64/driver:/usr/local/Ascend/driver/lib64/common"
         python3 /mnt/configmap/file_utils.py "$CANN_INSTALL_PATH/ascend-toolkit/set_env.sh" --permission-mode 555 --max-size 104857600 || exit 1
@@ -175,12 +175,12 @@ if [ $# -eq 0 ]; then
 
     if [ $exit_code -eq 1 ]; then
         if [ -n "$CONFIG_FROM_CONFIGMAP_PATH" ]; then
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/ms_controller.json" "$CONFIG_DIR/ms_controller.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/ms_controller.json" "$CONFIG_DIR/ms_controller.json"
             chmod 640 "$CONFIG_DIR/ms_controller.json"
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/http_client_ctl.json" "$CONFIG_DIR/http_client_ctl.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/http_client_ctl.json" "$CONFIG_DIR/http_client_ctl.json"
             chmod 640 "$CONFIG_DIR/http_client_ctl.json"
         fi
-        copy_or_fail "$GLOBAL_RANK_TABLE_FILE_PATH" "$MIES_INSTALL_PATH"
+        cp "$GLOBAL_RANK_TABLE_FILE_PATH" "$MIES_INSTALL_PATH"
         export GLOBAL_RANK_TABLE_FILE_PATH="$MIES_INSTALL_PATH/global_ranktable.json"
         chmod 640 "$GLOBAL_RANK_TABLE_FILE_PATH"
         export MINDIE_MS_CONTROLLER_CONFIG_FILE_PATH="$CONFIG_DIR/ms_controller.json"
@@ -199,11 +199,11 @@ if [ $# -eq 0 ]; then
 
     if [ $exit_code -eq 0 ]; then
         if [ -n "$CONFIG_FROM_CONFIGMAP_PATH" ]; then
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/ms_controller.json" "$CONFIG_DIR/ms_controller.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/ms_controller.json" "$CONFIG_DIR/ms_controller.json"
             chmod 640 "$CONFIG_DIR/ms_controller.json"
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/ms_coordinator.json" "$CONFIG_DIR/ms_coordinator.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/ms_coordinator.json" "$CONFIG_DIR/ms_coordinator.json"
             chmod 640 "$CONFIG_DIR/ms_coordinator.json"
-            copy_or_fail "$CONFIG_FROM_CONFIGMAP_PATH/http_client_ctl.json" "$CONFIG_DIR/http_client_ctl.json"
+            cp "$CONFIG_FROM_CONFIGMAP_PATH/http_client_ctl.json" "$CONFIG_DIR/http_client_ctl.json"
             chmod 640 "$CONFIG_DIR/http_client_ctl.json"
         fi
         export MINDIE_MS_COORDINATOR_CONFIG_FILE_PATH="$CONFIG_DIR/ms_coordinator.json"
@@ -227,10 +227,10 @@ if [ $# -eq 0 ]; then
 elif [ $# -eq 1 ]; then
     if [[ "$1" == "single_container" ]]; then
         if [ -n "$CONFIG_FROM_CONFIG_FILE_PATH" ]; then
-            copy_or_fail -r "$CONFIG_FROM_CONFIG_FILE_PATH/..data/"* "$CONFIG_DIR/"
+            cp -r "$CONFIG_FROM_CONFIG_FILE_PATH/..data/"* "$CONFIG_DIR/"
             chmod 640 "$CONFIG_DIR/"*
             if [ "$MINDIE_MS_GEN_SERVER_PORT" == "false" ]; then
-                copy_or_fail "$CONFIG_DIR/config1.json" "$CONFIG_DIR/config.json"
+                cp "$CONFIG_DIR/config1.json" "$CONFIG_DIR/config.json"
                 chmod 640 "$CONFIG_DIR/config.json"
             fi
         fi
