@@ -78,6 +78,12 @@ def check_file_permission(path: str, permission_mode):
     mode = file_stat.st_mode
     current_perm = mode & 0o777
     extra_permissions = current_perm & (~permission_mode & 0o777)
+    
+    # Unlike .run packages, .whl packages do not support setting file permissions explicitly.
+    # To keep the permission handling compatible for both .whl and .run packages,
+    # permissions 640 and 644 are both allowed.
+    if current_perm in {0o640, 0o644} and permission_mode in {0o640, 0o644}:
+        return
 
     if extra_permissions != 0:
         raise PermissionError(
