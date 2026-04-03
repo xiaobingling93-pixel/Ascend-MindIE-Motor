@@ -80,6 +80,14 @@ public:
         ControllerConfig::GetInstance()->Init();
     }
 
+    void SetRecoverySwitch(bool lingquEnabled, bool roceEnabled)
+    {
+        auto testJson = GetServerRequestHandlerTestJsonPath();
+        ModifyJsonItem(testJson, "fault_recovery_func_dict", "lingqu_link", lingquEnabled);
+        ModifyJsonItem(testJson, "fault_recovery_func_dict", "roce_link", roceEnabled);
+        ControllerConfig::GetInstance()->Init();
+    }
+
     void InitNodeStatus()
     {
         nodeStatus = std::make_shared<NodeStatus>();
@@ -184,9 +192,7 @@ TEST_F(TestNPURecoveryManager, TestInitSuccess)
  */
 TEST_F(TestNPURecoveryManager, TestProcessFaultMessageWhenNPURecoveryDisabled)
 {
-    auto testJson = GetServerRequestHandlerTestJsonPath();
-    ModifyJsonItem(testJson, "fault_recovery_func_dict", "lingqu_link", false);
-    ControllerConfig::GetInstance()->Init();
+    SetRecoverySwitch(false, false);
     uint64_t nodeId = 100;
     std::string ip = "127.0.0.1";
     auto node = CreateTestNode(nodeId, ip, MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE);
@@ -196,6 +202,25 @@ TEST_F(TestNPURecoveryManager, TestProcessFaultMessageWhenNPURecoveryDisabled)
     auto processedFaults = NPURecoveryManager::GetInstance()->GetProcessedSwitchFaults();
     EXPECT_EQ(processedFaults.size(), 0);
 }
+
+/*
+ * 测试描述: 校验 lingqu_link/roce_link 开关读取
+ */
+TEST_F(TestNPURecoveryManager, TestRecoverySwitchConfigRead)
+{
+    SetRecoverySwitch(false, false);
+    EXPECT_FALSE(ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("lingqu_link"));
+    EXPECT_FALSE(ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("roce_link"));
+
+    SetRecoverySwitch(true, false);
+    EXPECT_TRUE(ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("lingqu_link"));
+    EXPECT_FALSE(ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("roce_link"));
+
+    SetRecoverySwitch(false, true);
+    EXPECT_FALSE(ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("lingqu_link"));
+    EXPECT_TRUE(ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("roce_link"));
+}
+
 
 /*
  * 测试描述: 测试不开oom恢复功能时，故障消息被忽略
@@ -532,6 +557,58 @@ TEST_F(TestNPURecoveryManager, TestProcessCQEFaultInstanceAlreadyInRecovery)
 
     // ProcessRoCERecovery 异步执行，需等待完成后断言
     std::this_thread::sleep_for(std::chrono::seconds(2));
+    auto instancesInRecovery = NPURecoveryManager::GetInstance()->GetInstancesInRecovery();
+    EXPECT_EQ(instancesInRecovery.size(), 0);
+}
+
+/*
+ * 测试描述: 关闭 roce_link 时，CQE 故障不应触发 RoCE 恢复
+ */
+TEST_F(TestNPURecoveryManager, TestProcessCQEFaultWhenRoceDisabled)
+{
+    SetRecoverySwitch(true, false); // 仅开启 lingqu_link
+
+    uint64_t nodeIdP = 99;
+    uint64_t nodeIdD = 100;
+    std::string ipP = "127.0.0.0";
+    std::string ipD = "127.0.0.1";
+    auto nodeP = CreateTestNode(nodeIdP, ipP, MINDIE::MS::DIGSInstanceRole::PREFILL_INSTANCE, {nodeIdP, nodeIdD});
+    auto nodeD = CreateTestNode(nodeIdD, ipD, MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE, {nodeIdP, nodeIdD});
+    nodeStatus->AddNode(std::move(nodeP));
+    nodeStatus->AddNode(std::move(nodeD));
+
+    fault::FaultMsgSignal faultMsg = CreateCQEFaultMsg(ipD, "4C1F8608");
+
+    size_t beforeSize = NPURecoveryManager::GetInstance()->GetInstancesInRecovery().size();
+    NPURecoveryManager::GetInstance()->ProcessFaultMessage(faultMsg);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    size_t afterSize = NPURecoveryManager::GetInstance()->GetInstancesInRecovery().size();
+
+    EXPECT_EQ(beforeSize, afterSize);
+}
+
+/*
+ * 测试描述: 仅开启 roce_link 时，CQE 故障仍可触发并完成 RoCE 恢复流程
+ */
+TEST_F(TestNPURecoveryManager, TestProcessCQEFaultOnlyRoceEnabled)
+{
+    SetRecoverySwitch(false, true); // 仅开启 roce_link
+
+    uint64_t nodeIdP = 99;
+    uint64_t nodeIdD = 100;
+    std::string ipP = "127.0.0.0";
+    std::string ipD = "127.0.0.1";
+    auto nodeP = CreateTestNode(nodeIdP, ipP, MINDIE::MS::DIGSInstanceRole::PREFILL_INSTANCE, {nodeIdP, nodeIdD});
+    auto nodeD = CreateTestNode(nodeIdD, ipD, MINDIE::MS::DIGSInstanceRole::DECODE_INSTANCE, {nodeIdP, nodeIdD});
+    nodeStatus->AddNode(std::move(nodeP));
+    nodeStatus->AddNode(std::move(nodeD));
+
+    fault::FaultMsgSignal faultMsg = CreateCQEFaultMsg(ipD, "4C1F8608");
+
+    NPURecoveryManager::GetInstance()->ProcessFaultMessage(faultMsg);
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // 无 NodeScheduler 时 RoCE 恢复路径会发送 STOP_ENGINE 并清理恢复队列
     auto instancesInRecovery = NPURecoveryManager::GetInstance()->GetInstancesInRecovery();
     EXPECT_EQ(instancesInRecovery.size(), 0);
 }
