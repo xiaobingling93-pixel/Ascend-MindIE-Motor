@@ -115,6 +115,7 @@ function copy_mindie_service() {
           "$RELEASE_TMP_DIR"/bin/
     mkdir -p "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf
     cp -rf "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/example/deploy_scripts/*  "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/
+    rm -f "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/ras_starter.py
 
     cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/config/ms_coordinator.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
     cp -f "$MINDIE_SERVICE_SRC_DIR"/mindie_motor/src/config/ms_controller.json "$RELEASE_TMP_DIR"/examples/kubernetes_deploy_scripts/conf/
