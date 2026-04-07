@@ -305,12 +305,23 @@ void RequestRepeater::SetOutputNumOpenAI(boost::beast::string_view data, std::sh
 {
     try {
         auto dataJson = nlohmann::json::parse(data, CheckJsonDepthCallBack);
-        auto choices = dataJson.at("choices");
-        for (auto it = choices.begin(); it != choices.end(); ++it) {
-            auto message = it->at("message");
-            auto output = message.dump();
-            reqInfo->AddOutputNum(
-                static_cast<size_t>(static_cast<float>(output.size()) / Configure::Singleton()->strTokenRate));
+        const auto &choices = dataJson.at("choices");
+        float rate = Configure::Singleton()->strTokenRate;
+        if (rate <= 0.0f) {
+            rate = 1.0f;
+        }
+        for (const auto &choice : choices) {
+            std::string output;
+            if (choice.contains("message") && choice["message"].is_object()) {
+                output = choice["message"].dump();
+            } else if (choice.contains("text") && choice["text"].is_string()) {
+                output = choice["text"].get<std::string>();
+            } else {
+                LOG_W("[%s] [RequestRepeater] OpenAI choice skipped: no message object or text string.",
+                    GetWarnCode(ErrorType::WARNING, CoordinatorFeature::P_REQUESTREPEATER).c_str());
+                continue;
+            }
+            reqInfo->AddOutputNum(static_cast<size_t>(static_cast<float>(output.size()) / rate));
         }
     } catch (const nlohmann::json::exception& e) {
         std::string dataStr;
