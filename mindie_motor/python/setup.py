@@ -81,8 +81,12 @@ class CustomBuildPy(_build_py):
         (build_pkg / config_str).mkdir(parents=True, exist_ok=True)
         shutil.copytree(project_root / "install/config", build_pkg / config_str, dirs_exist_ok=True)
         (build_pkg / examples_str / scripts_str).mkdir(parents=True, exist_ok=True)
-        shutil.copytree(project_root / "mindie_motor/src/example/deploy_scripts",
-            build_pkg / examples_str / scripts_str, dirs_exist_ok=True)
+        shutil.copytree(
+            project_root / "mindie_motor/src/example/deploy_scripts",
+            build_pkg / examples_str / scripts_str,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns("ras_starter.py"),
+        )
         (build_pkg / "scripts" / "http_client_ctl").mkdir(parents=True, exist_ok=True)
         shutil.copytree(project_root / "mindie_motor/src/http_client_ctl/scripts",
             build_pkg / "scripts" / "http_client_ctl", dirs_exist_ok=True)

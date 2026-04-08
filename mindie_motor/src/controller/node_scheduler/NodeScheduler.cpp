@@ -1314,6 +1314,10 @@ bool NodeScheduler::BatchUnlinkNodes(const std::vector<uint64_t> &nodeIds)
             LOG_W("[NodeScheduler]BatchUnlinkNodes: node %lu not found", nodeId);
             return false;
         }
+        if (node->peers.empty()) {
+            LOG_W("[NodeScheduler]BatchUnlinkNodes: node %lu peers is empty, skip unlink", nodeId);
+            return false;
+        }
         for (auto &peer : std::as_const(node->peers)) {
             auto peerNode = mNodeStatus->GetNode(peer);
             if (peerNode == nullptr) {
@@ -1328,25 +1332,14 @@ bool NodeScheduler::BatchUnlinkNodes(const std::vector<uint64_t> &nodeIds)
                 postId.push_back(peer);
             }
         }
+        mNodeStatus->UpdateRoleStateAndPeers(node->instanceInfo.staticInfo.groupId, nodeId, stateReady, emptyPeers);
+        postId.push_back(nodeId);
     }
     std::sort(postId.begin(), postId.end());
     postId.erase(std::unique(postId.begin(), postId.end()), postId.end());
     LOG_I("[NodeScheduler]BatchUnlinkNodes: postId size %zu (unique peers to receive new role).", postId.size());
-
-    for (uint64_t nodeId : nodeIds) {
-        auto node = mNodeStatus->GetNode(nodeId);
-        if (node == nullptr) {
-            continue;
-        }
-        mNodeStatus->UpdateRoleStateAndPeers(node->instanceInfo.staticInfo.groupId, nodeId, stateReady, emptyPeers);
-    }
-    for (uint64_t nodeId : nodeIds) {
-        postId.push_back(nodeId);
-    }
-
-    std::sort(postId.begin(), postId.end());
-    postId.erase(std::unique(postId.begin(), postId.end()), postId.end());
     ServerRequestHandler::GetInstance()->BatchPostRole(*mServerClient, *mNodeStatus, postId, success);
+
     if (success.size() != postId.size()) {
         LOG_E("[NodeScheduler]BatchUnlinkNodes: Not all nodes unlinked, success %zu / postId %zu.",
             success.size(), postId.size());
@@ -1418,6 +1411,11 @@ bool NodeScheduler::ProcessBatchUnlinkAndLink(const std::vector<uint64_t> &nodeI
         LOG_E("[NodeScheduler]ProcessBatchUnlinkAndLink: BatchUnlinkNodes failed");
         return false;
     }
+    // Unlink 与 Link 之间留窗，等待侧链/实例侧收敛后再建链，避免过早 Post role
+    constexpr uint32_t roceUnlinkLinkGapSeconds = 5;
+    LOG_I("[NodeScheduler]ProcessBatchUnlinkAndLink: wait %u seconds after unlink...", roceUnlinkLinkGapSeconds);
+    std::this_thread::sleep_for(std::chrono::seconds(roceUnlinkLinkGapSeconds));
+
     // RoCE 恢复使用较短超时(10 次 * 5s ≈ 50s)，避免长时间阻塞导致无法下发 STOP_ENGINE
     constexpr uint32_t roceCheckStatusAttempts = 10;
     if (!BatchLinkNodes(nodeIds, roceCheckStatusAttempts)) {

@@ -42,7 +42,6 @@ class CheckParams:
     with_cert: bool
     model_name: str
     input_content: str
-    deployment_dir: str
     coordinator_port: str
     coordinator_manage_port: str
     namespace: str
@@ -116,7 +115,8 @@ def parse_boot_args(boot_args: list) -> dict:
     default_boot_args = {
         "--user_config_path": "./user_config.json",
         "--conf_path": "./conf",
-        "--deploy_yaml_path": "./deployment"
+        "--deploy_yaml_path": "./deployment",
+        "--output_path": "./output"
     }
 
     def match_boot_arg(arg: str) -> str:
@@ -151,24 +151,6 @@ def parse_boot_args(boot_args: list) -> dict:
 
     logging.info(f"boot args: {default_boot_args}")
     return default_boot_args
-
-
-def filter_deprecated_attach_from_boot_args(boot_args: list) -> list:
-    """Remove deprecated --attach (and optional value) from boot args."""
-    out = []
-    removed = False
-    it = iter(boot_args)
-    for arg in it:
-        if arg != "--attach":
-            out.append(arg)
-            continue
-        removed = True
-        nxt = next(it, None)
-        if nxt is not None and nxt.startswith("--"):
-            out.append(nxt)
-    if removed:
-        logging.warning("--attach is deprecated, please remove it from boot arguments.")
-    return out
 
 
 def fetch_config(config_path: str) -> dict:
@@ -237,23 +219,19 @@ def is_mindie_service_detected(namespace: str) -> bool:
     return False
 
 
-def is_metrics_mode_enabled() -> bool:
-    # Check if metrics is enabled
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    boot_sh_path = os.path.join(script_dir, "boot_helper", "boot.sh")
-    if os.path.isfile(boot_sh_path):
-        with open(boot_sh_path, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                if (line.strip().startswith("export") and "MIES_SERVICE_MONITOR_MODE" in line and
-                        line.split("=")[1].strip() == "1"):
-                    logging.info("Metrics mode is enabled!!!")
-                    return True
-    logging.info("Metrics mode is disabled!!!")
-    return False
+def is_metrics_mode_enabled(user_config: dict, user_config_path: str) -> bool:
+    rel = user_config["deploy_config"]["mindie_env_path"]
+    env_path = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(user_config_path)), rel))
+    with safe_open(env_path, permission_mode=0o640) as f:
+        env_json = json.load(f)
+    val = (env_json.get("mindie_common_env") or {}).get("MIES_SERVICE_MONITOR_MODE")
+    ok = val == 1 or (isinstance(val, str) and val.strip() == "1")
+    logging.info("Metrics mode is enabled" if ok else "Metrics mode disabled")
+    return ok
 
 
-def restart_service(namespace: str, boot_args):
-    # graceful exit
+def graceful_exit(namespace: str):
     logging.info("Start to retain logs and restart service")
     subprocess.run(["bash", "collect_pd_cluster_logs.sh"])
     if not os.path.exists(os.path.join(os.getcwd(), "delete.sh")):
@@ -262,14 +240,9 @@ def restart_service(namespace: str, boot_args):
     while True:
         if not is_mindie_service_detected(namespace):
             logging.info("Delete mindie subprocess successfully!")
-            break
+            return
         logging.info("Waiting for mindie subprocess to terminate!!!")
         time.sleep(10)
-
-    # restart service
-    deploy_ac_job_res = subprocess.run(["python3", "deploy_ac_job.py"] + boot_args)
-    if is_mindie_service_detected(namespace):
-        logging.info(f"Restart service successfully!")
 
 
 def get_metrics_values(http_pool_manager, params: CheckParams, *metric_names) -> tuple:
@@ -322,11 +295,12 @@ def get_metrics_values(http_pool_manager, params: CheckParams, *metric_names) ->
 
 def main():
     parser = argparse.ArgumentParser(description="MindIE RAS Starter")
-    _, boot_args = parser.parse_known_args()
-    boot_args = filter_deprecated_attach_from_boot_args(boot_args)
+    parser.add_argument('--attach', action='store_true', help='start as attach mode')
+    args, boot_args = parser.parse_known_args()
     logging.info(f"Boot arguments: {boot_args}")
     boot_config = parse_boot_args(boot_args)
 
+    is_attach = args.attach
     probe_interval = 300
     do_inference_retries = 5
     do_inference_interval = 180
@@ -358,35 +332,39 @@ def main():
     except Exception as e:
         metric_port = coordinator_http_config["manage_port"]
 
+    namespace = user_config["deploy_config"]["job_id"]
     params = CheckParams(
         with_cert=(cert_context is not None),
         model_name=model_name,
         input_content=input_content,
-        deployment_dir=boot_config["--deploy_yaml_path"],
         coordinator_port=coordinator_http_config["predict_port"],
         coordinator_manage_port=metric_port,
-        namespace=user_config["deploy_config"]["job_id"]
+        namespace=namespace
     )
 
-    # Check if service is deployed
-    while True:
-        if is_mindie_service_detected(params.namespace):
-            break
-        logging.info(f"Waiting for service {params.namespace} to be deployed...")
-        time.sleep(10)
-    logging.info(f"Service {params.namespace} is deployed!!!")
-    
-    # Check if metrics is enabled
-    if not is_metrics_mode_enabled():
-        raise RuntimeError(f"Metrics mode is disabled, please check and set MIES_SERVICE_MONITOR_MODE=1.")
-
-    logging.info(f"Start monitoring service with namespace: {params.namespace}, model_name: {params.model_name}, "
+    logging.info(f"Start monitoring service with namespace: {namespace}, model_name: {params.model_name}, "
                  f"coordinator_port: {params.coordinator_port}, "
                  f"coordinator_manage_port: {params.coordinator_manage_port}")
 
+    # Check if metrics is enabled (mindie env JSON: mindie_common_env.MIES_SERVICE_MONITOR_MODE: 1)
+    if not is_metrics_mode_enabled(user_config, boot_config["--user_config_path"]):
+        raise RuntimeError("Metrics is disabled, please set MIES_SERVICE_MONITOR_MODE to 1 in mindie env file.")
+
+    # Only start service in start up mode
+    if not is_attach and is_mindie_service_detected(namespace):
+        raise RuntimeError(f"Service {namespace} has already deployed, ras_starter exiting... "
+                           f"If you want to attach ras_starter.py to the existing service, use --attach.")
 
     max_retry_time = 10240
     while max_retry_time > 0:
+        if not is_mindie_service_detected(namespace):
+            deploy_ac_job_res = subprocess.run(["python3", "deploy_ac_job.py"] + boot_args)
+            if deploy_ac_job_res.returncode:
+                logging.error(f"Start service failed! please check boot_args: {boot_args}")
+                exit(-1)
+            else:
+                logging.info(f"Start service successfully!")
+
         # Check if service is ready
         while True:
             if check_service_status(http_pool_manager, params):
@@ -461,7 +439,7 @@ def main():
                         logging.info(f"System is busy, continue to monitor...")
                         continue
                 
-        restart_service(params.namespace, boot_args)
+        graceful_exit(namespace)
 
 if __name__ == '__main__':
     main()

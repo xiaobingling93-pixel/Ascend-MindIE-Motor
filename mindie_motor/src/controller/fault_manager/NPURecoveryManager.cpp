@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <chrono>
 #include <string>
-#include <thread>
 #include <future>
 #include <atomic>
 #include <set>
@@ -397,11 +396,6 @@ void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
         return;
     }
 
-    // 等待 LLM 侧 PAUSE_ENGINE_ROCE 生效后再执行 unlink/link，避免过早下发 role 导致异常
-    constexpr uint32_t extraWaitSeconds = 5;
-    LOG_I("[NPURecoveryManager] ProcessRoCERecovery: wait %u seconds before BatchUnlinkAndLink.", extraWaitSeconds);
-    std::this_thread::sleep_for(std::chrono::seconds(extraWaitSeconds));
-
     LOG_I("[NPURecoveryManager] PD link reestablishment for instance %lu", instanceId);
     if (!mNodeScheduler->ProcessBatchUnlinkAndLink(instanceNodeIds)) {
         LOG_E("[NPURecoveryManager] ProcessBatchUnlinkAndLink failed for node %lu, instance %lu, sending STOP_ENGINE",
@@ -425,7 +419,7 @@ void NPURecoveryManager::ProcessRoCERecovery(uint64_t instanceId,
 void NPURecoveryManager::ProcessFaultMessage(const fault::FaultMsgSignal &faultMsg)
 {
     bool lingquLinkEnabled = ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("lingqu_link");
-    bool roceEnabled = ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("roce");
+    bool roceEnabled = ControllerConfig::GetInstance()->GetFaultRecoveryEnableByConfigKey("roce_link");
     if (!lingquLinkEnabled && !roceEnabled) {
         LOG_I("[NPURecoveryManager] Skip processing fault message (lingqu_link and roce both disabled)");
         return;
