@@ -165,6 +165,9 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
     def _monitor_engine_server_status(self):
         while self.running:
             self.logger.debug(f"Monitering Engine Server status")
+            query_results = self._query_engine_server_status()
+            query_status_timestamp = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
+
             if not self.heartbeat_mng.heartbeat_check_allowed:
                 # 快恢命令在运行或者heartbeatmng在处理异常,不做状态更新和处理
                 self.logger.info(f"while handling cmd, not update heartbeat")
@@ -174,8 +177,6 @@ class NodeStatusMonitor(metaclass=_SingletonMeta):
                 self.logger.error(f"heartBeatMng is Paused while no cmd is executing")
                 time.sleep(self.query_interval)
                 continue
-            query_results = self._query_engine_server_status()
-            query_status_timestamp = datetime.now(timezone.utc).strftime("%Y/%m/%d %H:%M:%S")
             
             if not all(res.get("success", None) is True for res in query_results):
                 # 心跳探测失败
