@@ -143,7 +143,8 @@ private:
         "80CB8009", // 灵衢伴生故障码
         "80CB800A", // hbm伴生故障码
         "80E01801", // hbm伴生故障码
-        "80E18404"  // hbm伴生故障码
+        "80E18404", // hbm伴生故障码
+        "81078603"  // linkdown subhealthy 故障码
     };
 
     // CQE(4C1F8608) 设备故障码白名单，用于 GetCQEInstanceIdsFromFaultMessage 识别 CQE 实例
