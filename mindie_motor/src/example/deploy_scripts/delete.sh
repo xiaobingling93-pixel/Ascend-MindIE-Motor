@@ -48,6 +48,18 @@ for yaml_file in "$YAML_DIR"/*.yaml; do
     fi
 done
 
+# keep the same with yaml_template/engine_template.yaml terminationGracePeriodSeconds: 10
+for ((i=10; i>=1; i--)); do
+    echo "Waiting for pods to terminate gracefully... ${i}s remaining"
+    sleep 1
+done
+
+# Terminating is not a status.phase value; stuck terminating pods have metadata.deletionTimestamp set.
+kubectl get pods -n "$NAME_SPACE" -o jsonpath='{range .items[?(@.metadata.deletionTimestamp)]}{.metadata.name}{"\n"}{end}' | while read -r pod; do
+    [ -z "$pod" ] && continue
+    kubectl delete pod "$pod" -n "$NAME_SPACE" --force --grace-period=0
+done
+
 # 将user_config.json和user_config_base_A3.json中的"model_id"字段设置为""
 for file in ./*user_config*; do
     if [ -f "$file" ]; then
