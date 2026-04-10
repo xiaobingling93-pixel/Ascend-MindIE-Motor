@@ -1250,8 +1250,8 @@ def exec_cm_elastic_kubectl(deploy_config, out_path):
 
 def get_p_instance_scale_in_delete_order(job_id, p_base, p_total):
     """
-    获取P实例缩容时的删除顺序：检查所有P实例(0到p_base-1)的pod状态，
-    优先删除有Pending状态pod的实例，否则按索引从小到大删除。
+    获取P实例缩容时的删除顺序：动态获取当前集群中所有P实例的索引，
+    优先删除有Pending状态pod的实例，否则按索引从大到小删除。
     :param job_id: 命名空间
     :param p_base: 缩容前P实例总数
     :param p_total: 缩容后P实例总数
@@ -1260,8 +1260,7 @@ def get_p_instance_scale_in_delete_order(job_id, p_base, p_total):
     num_to_delete = p_base - p_total
     if num_to_delete <= 0:
         return []
-    indices_all = list(range(p_base))
-    default_order = list(range(p_base - num_to_delete, p_base))
+    default_order = list(range(p_base - 1, p_base - num_to_delete - 1, -1))
     try:
         cmd_parts = ['kubectl', 'get', 'pods', '-n', job_id, '-o', 'json']
         result = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=30)
@@ -1272,18 +1271,24 @@ def get_p_instance_scale_in_delete_order(job_id, p_base, p_total):
     except (json.JSONDecodeError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         logging.warning(f"Failed to get pod status: {e}, use default ascending order")
         return default_order
-    index_has_pending = {i: False for i in indices_all}
+    
+    existing_pods = {}
     pattern = re.compile(r'mindie-server-p(\d+)')
     for item in pods_data.get('items', []):
         pod_name = item.get('metadata', {}).get('name', '')
         phase = item.get('status', {}).get('phase', '')
         match = pattern.search(pod_name)
-        if match and phase == 'Pending':
+        if match:
             idx = int(match.group(1))
-            if idx < p_base:
-                index_has_pending[idx] = True
-    pending_indices = [i for i in indices_all if index_has_pending[i]]
-    non_pending_indices = [i for i in indices_all if not index_has_pending[i]]
+            existing_pods[idx] = phase
+            
+    if not existing_pods:
+        return default_order
+        
+    sorted_indices = sorted(existing_pods.keys(), reverse=True)
+    pending_indices = [idx for idx in sorted_indices if existing_pods[idx] == 'Pending']
+    non_pending_indices = [idx for idx in sorted_indices if existing_pods[idx] != 'Pending']
+    
     full_priority_order = pending_indices + non_pending_indices
     return full_priority_order[:num_to_delete]
 
@@ -1291,6 +1296,28 @@ def get_p_instance_scale_in_delete_order(job_id, p_base, p_total):
 def elastic_distributed_server_deploy(deploy_config, out_conf_path, out_deploy_yaml_path):
     elastic_distributed_server_deploy_p(deploy_config, out_conf_path, out_deploy_yaml_path)
     elastic_distributed_server_deploy_d(deploy_config, out_conf_path, out_deploy_yaml_path)
+
+
+def get_max_p_instance_index(job_id):
+    try:
+        cmd_parts = ['kubectl', 'get', 'pods', '-n', job_id, '-o', 'json']
+        result = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            return -1
+        pods_data = json.loads(result.stdout)
+        pattern = re.compile(r'mindie-server-p(\d+)')
+        max_idx = -1
+        for item in pods_data.get('items', []):
+            pod_name = item.get('metadata', {}).get('name', '')
+            match = pattern.search(pod_name)
+            if match:
+                idx = int(match.group(1))
+                if idx > max_idx:
+                    max_idx = idx
+        return max_idx
+    except Exception as e:
+        logging.warning(f"Failed to get max pod index: {e}")
+        return -1
 
 
 def elastic_distributed_server_deploy_p(deploy_config, out_conf_path, out_deploy_yaml_path):
@@ -1308,7 +1335,10 @@ def elastic_distributed_server_deploy_p(deploy_config, out_conf_path, out_deploy
             safe_kubectl_delete(os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id)
     if p_total > p_base:
         logging.info(f"Scale-out p instance, {p_base} -> {p_total}")
-        for index in range(p_base, p_total):
+        max_idx = get_max_p_instance_index(job_id)
+        start_idx = max_idx + 1 if max_idx >= 0 else p_base
+        num_to_add = p_total - p_base
+        for index in range(start_idx, start_idx + num_to_add):
             # 删除旧的configmap和YAML
             configmap_name = f"mindie-server-p{index}-config"
             exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
@@ -1362,6 +1392,9 @@ def exec_all_kubectl_multi(deploy_config, out_path, user_config_path, model_id):
         exec_cm_elastic_kubectl(deploy_config, out_path)
         logging.info("Starting to execute kubectl elastic server")
         elastic_distributed_server_deploy(deploy_config, out_conf_path, out_deploy_yaml_path)
+        refresh_user_config_json(user_config_path, model_id)
+        logging.info("Elastic server deploy finished. Return directly.")
+        return
     refresh_user_config_json(user_config_path, model_id)
     logging.info("Starting to generate global ranktable")
     ext = dict()
