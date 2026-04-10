@@ -177,8 +177,10 @@ DECODE_DEPLOY = "1"
 POD_RESCHEDULING = "pod-rescheduling"
 FAULT_RECOVERY_FUNC = "fault_recovery_func_dict"
 HBM = "hbm"
+ROCE_LINK = "roce_link"
 SCHEDULER_FILTER_FAULT_CODE = "huawei.com/schedule.filter.faultCode"
-SCHEDULER_FILTER_FAULT_CODE_VALUE = "80E18404:200"
+HBM_SCHEDULER_FILTER_FAULT_CODE_VALUES = ["80E18404:200", "80E01801"]
+ROCE_SCHEDULER_FILTER_FAULT_CODE_VALUES = ["8C1F8608", "4C1F8608"]
 EXEC = "exec"
 COMMAND = "command"
 context = dict()
@@ -722,14 +724,21 @@ def modify_fault_recovery_annotations(data, config):
     if FAULT_RECOVERY_FUNC not in config:
         return
     fault_recovery_dict = config[FAULT_RECOVERY_FUNC]
-    if not isinstance(fault_recovery_dict, dict) or not fault_recovery_dict.get(HBM):
+    if not isinstance(fault_recovery_dict, dict):
+        return
+    filter_fault_codes = []
+    if fault_recovery_dict.get(HBM):
+        filter_fault_codes.extend(HBM_SCHEDULER_FILTER_FAULT_CODE_VALUES)
+    if fault_recovery_dict.get(ROCE_LINK):
+        filter_fault_codes.extend(ROCE_SCHEDULER_FILTER_FAULT_CODE_VALUES)
+    if not filter_fault_codes:
         return
     if METADATA not in data:
         return
     if ANNOTATIONS not in data[METADATA] or data[METADATA][ANNOTATIONS] is None:
         data[METADATA][ANNOTATIONS] = CommentedMap()
     data[METADATA][ANNOTATIONS][SCHEDULER_FILTER_FAULT_CODE] = DoubleQuotedScalarString(
-        SCHEDULER_FILTER_FAULT_CODE_VALUE
+        ",".join(filter_fault_codes)
     )
 
 
