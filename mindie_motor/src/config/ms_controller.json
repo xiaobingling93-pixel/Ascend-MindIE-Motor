@@ -19,7 +19,7 @@
   "fault_recovery_func_dict":{
     "lingqu_link": false,
     "roce_link": false,
-    "oom": true,
+    "oom": false,
     "hbm": false
   },
   "global_rank_table_file_path": "./conf/global_rank_table_file.json",

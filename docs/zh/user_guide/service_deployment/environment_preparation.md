@@ -218,6 +218,62 @@ kubeadm reset
     
     ![](../../figures/tag910.png)
 
+<br>
+
+**Kubernetes日志打屏转储轮转**
+
+> **说明：**
+> 以下日志轮转配置需要在Kubernetes集群的**所有节点**（包括管理节点和工作节点）上进行操作。
+
+1. 在管理节点上执行以下命令，查看当前集群节点所使用的容器运行时（Container Runtime）。
+
+    ```bash
+    kubectl get node -o wide
+    ```
+
+    通过观察输出结果中的 `CONTAINER-RUNTIME` 列，确认节点使用的是 `docker` 还是 `containerd`。
+
+2. 根据不同的容器运行时环境，分别修改对应的配置文件以配置日志转储轮转。
+
+    - **如果容器运行时为 Docker：**
+
+      修改 `/etc/docker/daemon.json` 文件，在其中添加或更新 `log-opts` 配置项（建议最大日志文件大小设置为20MB，最大文件数量设置为10，用户可按需自行配置）：
+
+      ```json
+      {
+        "log-opts": {
+          "max-size": "20m",
+          "max-file": "10"
+        }
+      }
+      ```
+
+      修改完成后，执行以下命令重启 Docker 服务使配置生效。
+
+      ```bash
+      systemctl daemon-reload
+      systemctl restart docker
+      ```
+
+    - **如果容器运行时为 Containerd：**
+
+      修改 Kubelet 配置文件（通常为 `/var/lib/kubelet/config.yaml`）。在配置文件中与 `apiVersion` 和 `kind` 同级的位置添加或修改以下参数（建议最大日志文件大小设置为20MB，最大文件数量设置为10，可按需修改）：
+
+      ```yaml
+      apiVersion: kubelet.config.k8s.io/v1beta1 # 仅作位置参考，无需修改
+      kind: KubeletConfiguration                # 仅作位置参考，无需修改
+      ...
+      containerLogMaxSize: "20Mi"               # 需要添加或修改的配置项
+      containerLogMaxFiles: 10                  # 需要添加或修改的配置项
+      ```
+
+      修改完成后，执行以下命令重启 Kubelet 服务使配置生效。
+
+      ```bash
+      systemctl daemon-reload
+      systemctl restart kubelet
+      ```
+
 ## MindCluster组件安装
 
 集群管理组件依赖MindCluster中的Ascend Docker Runtime、Ascend Device Plugin、Volcano和Ascend Operator组件。其中Volcano和Ascend Operator组件在管理节点安装，其他组件在计算节点上安装。
