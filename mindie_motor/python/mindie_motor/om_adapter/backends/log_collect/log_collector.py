@@ -41,31 +41,45 @@ class CollectHandler(FileSystemEventHandler):
         return PathCheck.check_path_full(event.src_path)
 
     def on_created(self, event):
-        if self._check_valid_file(event):
-            self.logger.info(f"[OM Adapter] File %s is created" % event.src_path)
-            self.log_processor.watch_files[event.src_path] = LogFile(file_path=event.src_path)
-            self.log_processor.modified_log_files.add(event.src_path)
+        try:
+            if self._check_valid_file(event):
+                self.logger.info(f"[OM Adapter] File %s is created" % event.src_path)
+                self.log_processor.watch_files[event.src_path] = LogFile(file_path=event.src_path)
+                self.log_processor.modified_log_files.add(event.src_path)
+        except Exception as e:
+            self.logger.error(f"[OM Adapter] Failed to handle file created event for {event.src_path}: {e}")
 
     def on_modified(self, event):
-        if self._check_valid_file(event):
-            self.logger.debug(f"[OM Adapter] File %s is modified", event.src_path)  # 文件内容更新频率高
-            if event.src_path not in self.log_processor.watch_files:
-                self.log_processor.watch_files[event.src_path] = LogFile(file_path=event.src_path)
-            self.log_processor.modified_log_files.add(event.src_path)
+        try:
+            if self._check_valid_file(event):
+                self.logger.debug(f"[OM Adapter] File %s is modified", event.src_path)  # 文件内容更新频率高
+                if event.src_path not in self.log_processor.watch_files:
+                    self.log_processor.watch_files[event.src_path] = LogFile(file_path=event.src_path)
+                self.log_processor.modified_log_files.add(event.src_path)
+        except Exception as e:
+            self.logger.error(f"[OM Adapter] Failed to handle file modified event for {event.src_path}: {e}")
 
     def on_deleted(self, event):
-        if self._check_valid_file(event):
-            self.logger.info("[OM Adapter] File %s is deleted" % event.src_path)
-            self.log_processor.watch_files.pop(event.src_path)
-            self.log_processor.modified_log_files.pop(event.src_path)
+        try:
+            if self._check_valid_file(event):
+                self.logger.info("[OM Adapter] File %s is deleted" % event.src_path)
+                self.log_processor.watch_files.pop(event.src_path)
+                self.log_processor.modified_log_files.pop(event.src_path)
+        except Exception as e:
+            self.logger.error(f"[OM Adapter] Failed to handle file deleted event for {event.src_path}: {e}")
 
     def on_moved(self, event):
-        if self._check_valid_file(event):
-            self.logger.info(f"[OM Adapter] File %s is changed to %s" % (event.src_path, event.dest_path))
-            src_log_file = self.log_processor.watch_files.pop(event.src_path, LogFile(file_path=event.dest_path))
-            src_log_file.file_path = event.dest_path
-            src_log_file.last_read_position = 0  # 文件轮转后，更新读取位置
-            self.log_processor.watch_files[event.dest_path] = src_log_file
+        try:
+            if self._check_valid_file(event):
+                self.logger.info(f"[OM Adapter] File %s is changed to %s" % (event.src_path, event.dest_path))
+                src_log_file = self.log_processor.watch_files.pop(event.src_path, LogFile(file_path=event.dest_path))
+                src_log_file.file_path = event.dest_path
+                src_log_file.last_read_position = 0  # 文件轮转后，更新读取位置
+                self.log_processor.watch_files[event.dest_path] = src_log_file
+        except Exception as e:
+            self.logger.error(
+                f"[OM Adapter] Failed to handle file moved event from {event.src_path} to {event.dest_path}: {e}"
+            )
 
 
 class Collector:
