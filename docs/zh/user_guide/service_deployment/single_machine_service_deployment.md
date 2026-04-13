@@ -91,14 +91,14 @@
         将部署模式配置为单机（非分布式）服务部署模式，需配置以下参数。
 
         ```bash
-        "deploy_mode"= "single_node"
+        "deploy_mode": "single_node"
         ```
 
    - 配置ms_coordinator.json文件，参数详情请参见[配置说明](../cluster_management_component/coordinator.md#配置说明)章节。
         - 配置单机（非分布式）服务部署模式，需配置以下参数。
 
             ```bash
-            "deploy_mode"= "single_node"
+            "deploy_mode": "single_node"
             ```
 
         - 配置OpenAI多轮会话Cache亲和调度场景，需配置以下参数。

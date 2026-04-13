@@ -24,7 +24,7 @@
 |CANN|<li>Atlas 800I A2 推理服务器：</li><br>Ascend-cann-910*x*-ops_8.5.0_linux-aarch64.run<li>Atlas 300I Duo 推理卡+Atlas 800 推理服务器（型号 3000）：</li><br>Ascend-cann-310*x*-ops_8.5.0_linux-aarch64.run<br>**以上软件包名中的910*x*和310*x*请根据具体的硬件型号进行替换。**|二进制算子包。|[获取链接](https://www.hiascend.com/developer/download/community/result?module=ie+pt+cann)|
 |CANN|Ascend-cann-nnal_8.5.0_linux-aarch64.run|加速库软件包|[获取链接](https://www.hiascend.com/developer/download/community/result?module=ie+pt+cann)|
 |ATB Models|Ascend-mindie-atb-models_2.3.0_linux-aarch64_torch2.2.0-abi0.tar.gz|模型库安装包。|[获取链接](https://www.hiascend.com/developer/download/community/result?module=ie+pt+cann)|
-|Ascend Extension for PyTorch|torch_npu-2.1.0.post10-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl|torch_npu插件whl包。|[获取链接](https://www.hiascend.com/developer/download/community/result?module=ie+pt+cann)<li>获取2.1.0版本的torch_npu，请在社区版资源下载页面左上方“配套资源”中，选择PyTorch版本为7.2.0。</li><li>在PyTorch栏单击对应版本后方的“获取源码”，跳转至PyTorch的gitcode仓库发布页，然后再页面下方获取对应版本的torch_npu。</li>|
+|Ascend Extension for PyTorch|torch_npu-2.1.0.post17-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl|torch_npu插件whl包。|[获取链接](https://www.hiascend.com/developer/download/community/result?module=ie+pt+cann)<li>获取2.1.0版本的torch_npu，请在社区版资源下载页面左上方“配套资源”中，选择PyTorch版本为7.2.0。</li><li>在PyTorch栏单击对应版本后方的“获取源码”，跳转至PyTorch的gitcode仓库发布页，然后再页面下方获取对应版本的torch_npu。</li>|
 |Ascend Extension for PyTorch|torch-2.1.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl|PyTorch框架2.1.0版本的whl包。|[获取链接](https://download.pytorch.org/whl/cpu/torch-2.1.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl)|
 
 ## 前提条件
@@ -50,7 +50,7 @@
 
 1. 将从[软件包获取](#zbrjb)下载或制作的软件放到某一目录下，例如：/home/package。
 2. 使用以下命令拉取Ubuntu 22.04镜像。
-    
+
     ```bash
     docker pull ubuntu:22.04
     ```
@@ -116,21 +116,21 @@
         ```json
         # Please make sure all `ARG` have been set correctly
         # Set the arguments for different images
-        
+
         FROM ubuntu:22.04 AS base
-        
+
         ARG UBUNTU_VERSION=22.04
-        
+
         ARG ARCH
         ARG DEVICE
         LABEL description="Image for ${DEVICE} based on Ubuntu${UBUNTU_VERSION} ${ARCH}"
-        
+
         RUN groupadd -g 1000 mindie && \
             useradd -u 1000 -g 1000 -m mindieuser
-        
+
         ENV PYTHONPATH=/home/mindieuser/.local/lib/python3.10/site-packages:$PATH
         ENV PATH=/home/mindieuser/.local/bin:$PYTHONPATH
-        
+
         RUN echo 'export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/driver:$LD_LIBRARY_PATH' >> /home/mindieuser/.bashrc && \
             echo 'export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:$LD_LIBRARY_PATH' >> /home/mindieuser/.bashrc && \
             echo 'export PYTHONPATH=/home/mindieuser/.local/lib/python3.10/site-packages:$PATH' >> /home/mindieuser/.bashrc && \
@@ -155,20 +155,20 @@
             # pip config --user set global.index-url https://mirrors.tools.huawei.com/pypi/simple && \
             # pip config --user set global.trusted-host mirrors.tools.huawei.com && \
             locale-gen en_US.UTF-8
-        
+
         WORKDIR /home/mindieuser
         USER mindieuser
         ENV TZ=Asia/Shanghai
-        
+
         #######################################################################################
         # docker build -t cann --target cann .
         #######################################################################################
         FROM base AS cann
-        
+
         ARG DEVICE
         ARG ARCH
         ARG CANN_VERSION
-        
+
         RUN echo "source /home/mindieuser/Ascend/cann/set_env.sh" >> /home/mindieuser/.bashrc && \
             echo "source /home/mindieuser/Ascend/nnal/atb/set_env.sh" >> /home/mindieuser/.bashrc && \
             wget -q http://172.17.0.1:3000/Ascend-cann-toolkit_${CANN_VERSION}_linux-${ARCH}.run -P /home/mindieuser/package/ && \
@@ -178,17 +178,17 @@
             cd /home/mindieuser/package && \
             bash install_cann.sh && \
             rm -rf /home/mindieuser/package/*
-        
-        
+
+
         #######################################################################################
         # docker build -t pta --target pta .
         #######################################################################################
         FROM cann AS pta
-        
+
         ARG DEVICE
         ARG ARCH
         ARG TORCH_VERSION
-        
+
         RUN wget -q http://172.17.0.1:3000/torch_npu-${TORCH_VERSION}.post10-cp310-cp310-manylinux_2_17_${ARCH}.manylinux2014_${ARCH}.whl -P /home/mindieuser/package/ && \
             wget -q http://172.17.0.1:3000/torch-${TORCH_VERSION}-cp310-cp310-manylinux_2_17_${ARCH}.manylinux2014_${ARCH}.whl -P /home/mindieuser/package/ && \
             wget -q http://172.17.0.1:3000/requirements-${TORCH_VERSION}.txt -P /home/mindieuser/package/ && \
@@ -198,18 +198,18 @@
             bash install_pta.sh && \
             pip cache purge && \
             rm -rf /home/mindieuser/package/*
-        
-        
+
+
         #######################################################################################
         # docker build -t mindie --target mindie .
         #######################################################################################
         FROM pta AS mindie
-        
+
         ARG DEVICE
         ARG ARCH
         ARG TORCH_VERSION
         ARG MINDIE_VERSION
-        
+
         RUN echo "source /home/mindieuser/Ascend/mindie/set_env.sh" >> /home/mindieuser/.bashrc && \
             echo "source /home/mindieuser/Ascend/atb-models/set_env.sh" >> /home/mindieuser/.bashrc && \
             wget -q http://172.17.0.1:3000/Ascend-mindie_${MINDIE_VERSION}_linux-${ARCH}_abi0.run -P /home/mindieuser/package/ && \
@@ -292,7 +292,7 @@
 
         ```shell
         #!/bin/bash
-        
+
         CANN_TOOKIT="Ascend-cann-toolkit_*_linux-*.run"
         CANN_OPS="Ascend-cann-*-ops_*_linux-*.run"
         CANN_NNAL="Ascend-cann-nnal_*_linux-*.run"
@@ -304,7 +304,7 @@
         else
             echo "install toolkit failed with status ${toolkit_status}"
         fi
-        
+
         yes | ./${CANN_OPS} --install --quiet
         ops_status=$?
         if [ ${ops_status} -eq 0 ]; then
@@ -326,9 +326,9 @@
 
         ```shell
         #!/bin/bash
-        
+
         source /home/mindieuser/Ascend/cann/set_env.sh
-        
+
         mkdir -p /home/mindieuser/Ascend/atb-models
         MINDIE="Ascend-mindie_*_linux-*.run"
         MODEL="Ascend-mindie-atb-models_*_linux-aarch64_py310_torch2.1.0-abi0.tar.gz"
@@ -347,11 +347,11 @@
 
         ```shell
         #!/bin/bash
-        
+
         pip3 install torch-2.1.0-cp310-cp310-manylinux_2_17_*.manylinux2014_*.whl
-        
+
         TORCH_NPU_IN_PYTORCH_MANYLINUX=torch_npu-2.1.0*aarch64.whl
-        
+
         echo "start install torch_npu, wait for a minute..."
         pip install ${TORCH_NPU_IN_PYTORCH_MANYLINUX}
         ```
@@ -364,7 +364,7 @@
         # by the following command:
         #
         #    pip-compile
-        
+
         absl-py==2.1.0
             # via rouge-score
         accelerate==0.34.2
@@ -614,7 +614,7 @@
             # via gevent
         zope-interface==7.0.3
             # via gevent
-        
+
         # The following packages are considered to be unsafe in a requirements file:
         # setuptools
         ```
@@ -628,8 +628,8 @@
         const port = 3000;
         const directory = __dirname;
         const server = http.createServer((req, res) => {
-            const filePath = path.join(directory, req.url); 
-        
+            const filePath = path.join(directory, req.url);
+
             if (req.url ==='/files') {
                 // return all file names in current directory
                 fs.readdir(directory, (err, files)=> {
@@ -652,7 +652,7 @@
                 });
             }
         });
-        
+
         server.listen(port, () => {
             console.log(`Server is running at http://localhost:${port}`);
         });
@@ -715,16 +715,16 @@
      => => transferring dockerfile: 6.12kB                                                                                                                     0.0s
      => [internal] load metadata for docker.io/library/ubuntu:22.04                                                                                            0.0s
      => CACHED [base 1/2] FROM docker.io/library/ubuntu:22.04                                                                                                  0.0s
-     => [base 2/2] RUN echo 'export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/driver:$LD_LIBRARY_PATH' >> /root/.bashrc &&     
+     => [base 2/2] RUN echo 'export LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/driver:$LD_LIBRARY_PATH' >> /root/.bashrc &&
      echo 'export LD_LIBRARY_PATH=usr/local/Ascend/drive                                                                                                       187.2s
-     => [cann 1/1] RUN echo "source /usr/local/Ascend/cann/set_env.sh" >> /home/mindieuser/.bashrc &&     
+     => [cann 1/1] RUN echo "source /usr/local/Ascend/cann/set_env.sh" >> /home/mindieuser/.bashrc &&
      echo "source /usr/local/Ascend/nnal/atb/set_env.sh" >> /home/mindieuser/.bashrc &&     wget                                                               274.4s
-     => [pta 1/1] RUN wget -q http://172.17.0.1:3000/torch_npu-2.1.0.post8-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl 
+     => [pta 1/1] RUN wget -q http://172.17.0.1:3000/torch_npu-2.1.0.post8-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
      -P /opt/package/ &&     wget -q http://172.17.0.                                                                                                          272.9s
-     => [mindie 1/1] RUN echo "source /usr/local/Ascend/mindie/set_env.sh" >> /home/mindieuser/.bashrc  &&     
-     echo "source /usr/local/Ascend/atb-models/set_env.sh" >> /home/mindieuser/.bashrc &&     wget -q                                                          31.6s 
-     => exporting to image                                                                                                                                     31.9s 
-     => => exporting layers                                                                                                                                    31.9s 
+     => [mindie 1/1] RUN echo "source /usr/local/Ascend/mindie/set_env.sh" >> /home/mindieuser/.bashrc  &&
+     echo "source /usr/local/Ascend/atb-models/set_env.sh" >> /home/mindieuser/.bashrc &&     wget -q                                                          31.6s
+     => exporting to image                                                                                                                                     31.9s
+     => => exporting layers                                                                                                                                    31.9s
      => => writing image sha256:ddc1229a39be3e2b9f2d0d88e809a4dc2db17ac9ec67c4c178c21fe1359eb6d7                                                               0.0s
      => => naming to docker.io/library/mindie:2.3.0-aarch64-800I-A2                                                                                            0.0s
     ```

@@ -21,15 +21,15 @@
 
 1. 支持的硬件
 
-   - Atlas 800I A2 推理服务器的硬件与操作系统支持见[安装指南](./installation_guide.md)，PD 分离部署与特性支持度见[集群管理组件概述](./cluster_management_component/general_comments.md)与[PD 分离服务部署](./service_deployment/pd_separation_service_deployment.md)。
-   - Atlas 800I A3 超节点服务器的硬件与操作系统支持见[安装指南](./installation_guide.md)，PD 分离部署与特性支持度见[集群管理组件概述](./cluster_management_component/general_comments.md)与[PD 分离服务部署](./service_deployment/pd_separation_service_deployment.md)。
+   - Atlas 800I A2 推理服务器的硬件与操作系统支持见[安装指南](./install/installation_description.md)，PD 分离部署与特性支持度见[集群管理组件概述](./cluster_management_component/general_comments.md)与[PD 分离服务部署](./service_deployment/pd_separation_service_deployment.md)。
+   - Atlas 800I A3 超节点服务器的硬件与操作系统支持见[安装指南](./install/installation_description.md)，PD 分离部署与特性支持度见[集群管理组件概述](./cluster_management_component/general_comments.md)与[PD 分离服务部署](./service_deployment/pd_separation_service_deployment.md)。
 2. 环境检查
 
    - 部署与调优前已完成环境检查，具体检查项如下：
    - 网络拓扑：节点间链路、带宽与时延满足部署与集合通信要求，无丢包、误码等异常。
    - 存储性能：模型加载路径的 IOPS 与带宽满足大模型加载与运行要求。
    - NPU 配置：型号、片上内存、CANN/驱动版本、网口与光模块规格满足部署要求。
-   - 支持的操作系统：详情请参见[安装指南](./installation_guide.md)。
+   - 支持的操作系统：详情请参见[安装指南](./install/installation_description.md)。
 3. 部署准备
 
    - 进行调优前，请参见[集群管理组件概述](./cluster_management_component/general_comments.md)查看 PD 分离特性支持度，并已参考[PD 分离服务部署](./service_deployment/pd_separation_service_deployment.md)完成 PD 分离部署。PD 分离指 Prefill 与 Decode 实例分离部署，协同完成推理。
@@ -42,7 +42,7 @@
 每套集群管理组件实例（即 Coordinator/Controller 实例）管理一套PD实例，每套集群管理组件实例最大支持管理96节点（24P+6D）。
 以192节点集群为例，需划分为两套独立的24P+6D实例，集群管理组件实例也需要对应创建两套，如所示，两套集群管理组件实例可共部署在一台或主备通算节点，如果现场部署集群管理组件实例的通算节点为双机，则集群管理组件实例也可以创建对应的主从实例（主从集群管理组件 Coordinator实例和主从集群管理组件 Controller实例）。其中，通算节点用于部署集群管理组件（Coordinator/Controller），不承担模型主体推理计算。
 
-![1.png](https://raw.gitcode.com/user-images/assets/8772838/bb7fd4cf-5db5-437e-ace6-1b8bd3a35892/1.png '1.png')
+![1.png](https://raw.gitcode.com/user-images/assets/8772838/bb7fd4cf-5db5-437e-ace6-1b8bd3a35892/1.png)
 
  集群管理组件实例管理的PD实例规模支持按需灵活设置，如现场为64计算节点时，可以为64节点创建一套集群管理组件实例，也可以按照每16节点为一套独立的PD实例创建4套集群管理组件实例。
 
@@ -64,6 +64,7 @@
 通算节点硬件典型配置如表2所示，当前通算节点CPU架构仅支持Arm架构。
 
 **表2 Atlas 800I A2 推理服务器通算节点硬件要求**
+
 | 型号 |典型配置  | 最低要求 |
 |--|--|--|
 | CPU |2 * 48核/2.6GHz  | 按每个Controller实例4核/Coordinator实例16核计算，一套Controller+Coordinator实例共需要20核。 |
@@ -77,11 +78,6 @@
 大规模专家并行方案典型配置如表3-1所示，按照当前规格，每个P实例分配1个计算节点，每个D实例可分配1/2/4/8个计算节点。其中，P实例表示 Prefill 计算实例，D实例表示 Decode 计算实例。
 每套集群管理组件实例（即 Coordinator/Controller 实例）管理一套独立的PD实例，每套集群管理组件实例管理一个超节点（48计算节点）。
 如现场部署了多个超节点，需划分多套独立的PD实例（每套48节点），则集群管理组件实例也需要对应创建多套，组网示例如图3-5所示，多套集群管理组件实例可共部署在一台或两台通算节点，如果现场部署集群管理组件实例的通算节点为双机，则集群管理组件实例也可以创建对应的主从实例（主从Coordinator实例和主从Controller实例）。其中，通算节点用于部署集群管理组件（Coordinator/Controller），不承担模型主体推理计算。
-
-
-图3-5 N个超节点组网
-
-<img src="https://raw.gitcode.com/user-images/assets/8811849/6b7ed46b-a4e2-4fef-8572-3c35fd1bdd45/image.png" alt="图3-5 N个超节点组网" style="max-width: 100%; width: 900px;" />
 
 集群管理组件实例管理的PD实例规模可按需灵活设置，如现场为48计算节点时，可以为48节点创建一套集群管理组件实例，也可以按照每16节点为一套独立的PD实例创建3套集群管理组件实例。
 

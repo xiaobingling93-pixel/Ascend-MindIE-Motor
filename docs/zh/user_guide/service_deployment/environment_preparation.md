@@ -2,7 +2,7 @@
 
 本章节只适用于基于K8s的集群服务部署，不包含其他场景，其部署示意图如[图1 K8s集群整体部署视图](#fig698114995216)所示。
 
-**图 1**  K8s集群整体部署视图<a id="fig698114995216"></a>  
+**图 1**  K8s集群整体部署视图<a id="fig698114995216"></a>
 ![](../../figures/overall_deplopyemt_view_of_k8s.png)
 
 按照Server推理服务实例在集群计算节点（即推理服务器）上的分布和推理模式，可以分为以下两种部署形态。
@@ -23,7 +23,7 @@
 
 集群容器化部署依赖Kubernetes和MindCluster，具体部署场景请参考[表1 依赖列表](#table9819144513712)，Kubernetes组件详细介绍请参见[Kubernetes安装工具](https://kubernetes.io/zh-cn/docs/reference/setup-tools/)；MindCluster组件详细介绍请参见《MindCluster  集群调度用户指南》的“简介 \> 组件介绍”章节。
 
-**表 1**  依赖列表<a id="table9819144513712"></a> 
+**表 1**  依赖列表<a id="table9819144513712"></a>
 
 |依赖包|软件说明|管理节点是否安装|计算节点是否安装|
 |--|--|--|--|
@@ -67,7 +67,7 @@
 2. 参考阿里Kubernetes镜像官网首页进行安装Kubernetes的kubectl、kubeadm和kubelet工具。
 
     >[!NOTE]说明
-    >如果出现 “No match for argument: socat” 或者 “nothing provides socat needed by xxx” 等回显信息，表示环境缺少socat库，解决方式如下所示。（其他库缺失也会有同样的回显，比如iptables、conntrak等）
+    >如果出现 “No match for argument: socat” 或者 “nothing provides socat needed by xxx” 等回显信息，表示环境缺少socat库，解决方式如下所示。（其他库缺失也会有同样的回显，比如iptables、conntrack等）
     >使用以下命令自行安装缺失的库。
     >
     >```bash
@@ -83,7 +83,7 @@
     kubeadm config images list
     ```
 
-    **图 2**  所需依赖及镜像查询结果<a id="fig27291521143514"></a>  
+    **图 2**  所需依赖及镜像查询结果<a id="fig27291521143514"></a>
     ![](../../figures/k8s_query_results.png)
 
     根据查询结果，用户需自行通过docker pull的方式依次进行安装，示例命令如下所示。
@@ -98,8 +98,8 @@
     kubeadm init
     ```
 
-    **图 3**  Kubernetes集群初始化成功<a id="fig17764145015239"></a>  
-    
+    **图 3**  Kubernetes集群初始化成功<a id="fig17764145015239"></a>
+
     ![](../../figures/k8sinitializd_successfully_.png)
 
     然后执行[图3 Kubernetes集群初始化成功](#fig17764145015239)中的内容，如下所示：
@@ -116,7 +116,7 @@
     kubectl get pods -A
     ```
 
-    **图 4**  查看状态<a id="fig669924115221"></a>  
+    **图 4**  查看状态<a id="fig669924115221"></a>
     ![](../../figures/check_status.png)
 
 <br>
@@ -129,7 +129,7 @@
 kubeadm reset
 ```
 
-**图 5**  重置成功<a id="fig3621632193415"></a>  
+**图 5**  重置成功<a id="fig3621632193415"></a>
 ![](../../figures/reset_successful.png)
 
 >[!NOTE]说明
@@ -198,7 +198,7 @@ kubeadm reset
 
 4. 在管理节点上使用以下命令kubectl get nodes -A查看节点信息，如[图6 新增节点](#fig1471911375514)所示，localhost.localdomain即为新增节点。
 
-    **图 6**  新增节点<a id="fig1471911375514"></a>  
+    **图 6**  新增节点<a id="fig1471911375514"></a>
     ![](../../figures/new_node.png)
 
 5. 在管理节点上使用以下命令根据实际的NPU设备类型为新增节点打上accelerator=huawei-Ascend910或者accelerator=huawei-Ascend310x标签。
@@ -214,8 +214,8 @@ kubeadm reset
     kubectl get nodes --show-labels
     ```
 
-    **图 7**  accelerator=huawei-Ascend910标签<a id="fig4827123110205"></a>  
-    
+    **图 7**  accelerator=huawei-Ascend910标签<a id="fig4827123110205"></a>
+
     ![](../../figures/tag910.png)
 
 <br>
@@ -278,18 +278,18 @@ kubeadm reset
 
 集群管理组件依赖MindCluster中的Ascend Docker Runtime、Ascend Device Plugin、Volcano和Ascend Operator组件。其中Volcano和Ascend Operator组件在管理节点安装，其他组件在计算节点上安装。
 
-1. 请参考《MindCluster  集群调度用户指南》的 “安装 > 安装部署 > 手动安装 > 安装前准备” 章节完成创建节点标签、创建用户、创建日志目录和创建命名空间。
-2. 请参考《MindCluster  集群调度用户指南》的 “安装 > 安装部署 > 手动安装 > Ascend Docker Runtime” 章节中的 “Containerd场景下安装Ascend Docker Runtime” 安装Ascend Docker Runtime。
-3. 请参考《MindCluster  集群调度用户指南》的“安装 > 安装部署 > 手动安装 > Ascend Device Plugin”章节安装Ascend Device Plugin，使用device-plugin-_xxx_-v *{version}*.yaml文件进行安装。
+1. 请参考《MindCluster  集群调度用户指南》的[安装前准备](https://gitcode.com/Ascend/mind-cluster/blob/master/docs/zh/scheduling/installation_guide/03_installation.md)章节完成创建节点标签、创建用户、创建日志目录和创建命名空间。
+2. 请参考《MindCluster  集群调度用户指南》的[Ascend Docker Runtime](https://gitcode.com/Ascend/mind-cluster/blob/master/docs/zh/scheduling/installation_guide/03_installation.md#ascend-docker-runtime)章节中的 “Containerd场景下安装Ascend Docker Runtime” 安装Ascend Docker Runtime。
+3. 请参考《MindCluster  集群调度用户指南》的[Ascend Device Plugin](https://gitcode.com/Ascend/mind-cluster/blob/master/docs/zh/scheduling/installation_guide/03_installation.md#ascend-device-plugin)章节安装Ascend Device Plugin，使用device-plugin-_xxx_-v *{version}*.yaml文件进行安装。
 
     >[!NOTE]说明
     >当Ascend Device Plugin启动时，_xxx_.yaml配置文件中useAscendDocker参数配置为true且用户已安装Ascend Docker Runtime并生效，会自动挂载在 “/usr/local/Ascend” 下驱动相关目录。
 
-4. 请参考《MindCluster  集群调度用户指南》的 “安装 > 安装部署 > 手动安装 > Volcano” 章节安装Volcano。
+4. 请参考《MindCluster  集群调度用户指南》的[Volcano](https://gitcode.com/Ascend/mind-cluster/blob/master/docs/zh/scheduling/installation_guide/03_installation.md#volcano)章节安装Volcano。
 
     >[!NOTE]说明
     >- 请使用v1.7.0版本的Volcano进行安装。
-    >- 在单机场景下，参考《MindCluster  集群调度用户指南》的 “安装 > 安装部署 > 手动安装 > Volcano” 章节安装Volcano时，在执行“Volcano”章节中的步骤9前，需要修改Volcano解压后生成的volcano-v1.7.0目录下的volcano-v1.7.0.yaml文件，搜索"useClusterInfoManager"字段并将该值改为"false"，如下图所示，修改完成后，再执行“Volcano”章节中的步骤9。
+    >- 在单机场景下，参考《MindCluster  集群调度用户指南》的[Volcano](https://gitcode.com/Ascend/mind-cluster/blob/master/docs/zh/scheduling/installation_guide/03_installation.md#volcano)章节安装Volcano时，在执行“Volcano”章节中的步骤9前，需要修改Volcano解压后生成的volcano-v1.7.0目录下的volcano-v1.7.0.yaml文件，搜索"useClusterInfoManager"字段并将该值改为"false"，如下图所示，修改完成后，再执行“Volcano”章节中的步骤9。
     >![](../../figures/volcano.png)
 
-5. 请参考《MindCluster  集群调度用户指南》的 “安装 > 安装部署 > 手动安装 > Ascend Operator” 章节安装Ascend Operator。
+5. 请参考《MindCluster  集群调度用户指南》的[Ascend Operator](https://gitcode.com/Ascend/mind-cluster/blob/master/docs/zh/scheduling/installation_guide/03_installation.md#ascend-operator)章节安装Ascend Operator。

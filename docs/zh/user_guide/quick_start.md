@@ -16,14 +16,19 @@
 
 1. 两种启动服务方法如下所示。
 
-    启动命令需在/*{MindIE安装目录}*/latest/mindie-service目录中执行。
+    启动命令需在 *{MindIE安装目录}* 目录中执行，使用以下命令查看安装路径。
 
-    >[!NOTE]说明 
+    ```bash
+    pip show mindie_llm | grep Location
+    ```
+
+    >[!NOTE]说明
     >拉起服务前，建议用户使用MindStudio的预检工具进行配置文件字段校验，辅助校验配置的合法性，详情请参见[链接](https://gitcode.com/Ascend/msit/tree/master/msprechecker)。
 
     - 方式一（推荐）：使用后台进程方式启动服务。后台进程方式启动服务后，关闭窗口后进程也会保留。
 
         ```bash
+        source set_env.sh
         nohup ./bin/mindieservice_daemon > output.log 2>&1 &
         ```
 
@@ -339,10 +344,10 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
 1. 使用以下命令下载并安装AISBench工具。
 
     ```bash
-    git clone https://gitee.com/aisbench/benchmark.git 
-    cd benchmark/ 
+    git clone https://gitee.com/aisbench/benchmark.git
+    cd benchmark/
     pip3 install -e ./ --use-pep517
-    pip3 install -r requirements/api.txt 
+    pip3 install -r requirements/api.txt
     pip3 install -r requirements/extra.txt
     ```
 
@@ -360,28 +365,28 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
 3. 配置ais\_bench/benchmark/configs/models/vllm\_api/vllm\_api\_stream\_chat.py文件，示例如下所示。
 
     ```python
-    from ais_bench.benchmark.models import VLLMCustomAPIChatStream  
-    models = [     
-        dict(         
+    from ais_bench.benchmark.models import VLLMCustomAPIChatStream
+    models = [
+        dict(
             attr="service",
             type=VLLMCustomAPIChatStream,
             abbr='vllm-api-stream-chat',
-            path="",                    # 指定模型序列化词表文件绝对路径，即是模型权重文件夹路径        
-            model="DeepSeek-R1",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）        
-            request_rate = 0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求        
-            retry = 2,         
-            host_ip = "localhost",      # 指定推理服务的IP        
-            host_port = 8080,           # 指定推理服务的端口        
-            max_out_len = 512,          # 推理服务输出的token的最大数量        
-            batch_size=1,               # 请求发送的最大并发数        
+            path="",                    # 指定模型序列化词表文件绝对路径，即是模型权重文件夹路径
+            model="DeepSeek-R1",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
+            request_rate = 0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
+            retry = 2,
+            host_ip = "localhost",      # 指定推理服务的IP
+            host_port = 8080,           # 指定推理服务的端口
+            max_out_len = 512,          # 推理服务输出的token的最大数量
+            batch_size=1,               # 请求发送的最大并发数
             generation_kwargs = dict(
                 temperature = 0.5,
                 top_k = 10,
                 top_p = 0.95,
                 seed = None,
                 repetition_penalty = 1.03,
-            )     
-        ) 
+            )
+        )
     ]
     ```
 
@@ -394,8 +399,8 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
     回显如下所示则表示执行成功：
 
     ```bash
-    dataset                 version  metric   mode  vllm_api_general_chat 
-    ----------------------- -------- -------- ----- ---------------------- 
+    dataset                 version  metric   mode  vllm_api_general_chat
+    ----------------------- -------- -------- ----- ----------------------
     demo_gsm8k              401e4c   accuracy gen                   62.50
     ```
 
@@ -408,10 +413,10 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
 1. 使用以下命令下载并安装AISBench工具。
 
     ```bash
-    git clone https://gitee.com/aisbench/benchmark.git 
-    cd benchmark/ 
+    git clone https://gitee.com/aisbench/benchmark.git
+    cd benchmark/
     pip3 install -e ./ --use-pep517
-    pip3 install -r requirements/api.txt 
+    pip3 install -r requirements/api.txt
     pip3 install -r requirements/extra.txt
     ```
 
@@ -422,36 +427,36 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
     >pip show ais_bench_benchmark
     >```
 
-2. 准备数据集。   
+2. 准备数据集。
 
     以gsm8k为例，单击[gsm8k数据集](https://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gsm8k.zip)下载数据集，将解压后的gsm8k/文件夹放置于工具根路径的ais_bench/datasets文件夹下。
 
 3. 配置ais_bench/benchmark/configs/models/vllm_api/vllm_api_stream_chat.py文件，示例如下所示。
 
     ```python
-    from ais_bench.benchmark.models import VLLMCustomAPIChatStream  
-    models = [     
-        dict(         
-            attr="service",         
-            type=VLLMCustomAPIChatStream,         
-            abbr='vllm-api-stream-chat',         
-            path="",                    # 指定模型序列化词表文件绝对路径，即是模型权重文件夹路径        
-            model="DeepSeek-R1",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）        
-            request_rate = 0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求        
-            retry = 2,         
-            host_ip = "localhost",      # 指定推理服务的IP        
-            host_port = 8080,           # 指定推理服务的端口        
-            max_out_len = 512,          # 推理服务输出的token的最大数量        
-            batch_size=1,               # 请求发送的最大并发数        
-            generation_kwargs = dict(             
-                temperature = 0.5,             
-                top_k = 10,             
-                top_p = 0.95,             
-                seed = None,             
-                repetition_penalty = 1.03,             
-                ignore_eos = True,      # 推理服务输出忽略eos（输出长度会达到max_out_len）        
-            )     
-        ) 
+    from ais_bench.benchmark.models import VLLMCustomAPIChatStream
+    models = [
+        dict(
+            attr="service",
+            type=VLLMCustomAPIChatStream,
+            abbr='vllm-api-stream-chat',
+            path="",                    # 指定模型序列化词表文件绝对路径，即是模型权重文件夹路径
+            model="DeepSeek-R1",        # 指定服务端已加载模型名称，依据实际VLLM推理服务拉取的模型名称配置（配置成空字符串会自动获取）
+            request_rate = 0,           # 请求发送频率，每1/request_rate秒发送1个请求给服务端，小于0.1则一次性发送所有请求
+            retry = 2,
+            host_ip = "localhost",      # 指定推理服务的IP
+            host_port = 8080,           # 指定推理服务的端口
+            max_out_len = 512,          # 推理服务输出的token的最大数量
+            batch_size=1,               # 请求发送的最大并发数
+            generation_kwargs = dict(
+                temperature = 0.5,
+                top_k = 10,
+                top_p = 0.95,
+                seed = None,
+                repetition_penalty = 1.03,
+                ignore_eos = True,      # 推理服务输出忽略eos（输出长度会达到max_out_len）
+            )
+        )
     ]
     ```
 
@@ -461,34 +466,34 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
     ais_bench --models vllm_api_stream_chat --datasets demo_gsm8k_gen_4_shot_cot_chat_prompt --mode perf --debug
     ```
 
-    回显如下所示则表示执行成功：       
+    回显如下所示则表示执行成功：
 
     ```linux
     ╒════════════╤════╤════════╤═══════╤══════╤═══════╤══════╤═══════╤═══════╤═══╕
-    │ Performance Parameters │ Stage  │ Average        │ Min          │ Max        │ Median       │ P75        │ P90          │ P99          │ N    │ 
+    │ Performance Parameters │ Stage  │ Average        │ Min          │ Max        │ Median       │ P75        │ P90          │ P99          │ N    │
     │ E2EL                   │total   │ 2048.2945  ms  │ 1729.7498 ms │ 3450.96 ms │ 2491.8789 ms │ 2750.85 ms │ 3184.9186 ms │ 3424.4354 ms │ 8    │
     │ TTFT                   │total   │ 50.332 ms      │ 50.6244 ms   │ 52.0585 ms │ 50.3237 ms   │ 50.5872 ms │ 50.7566 ms   │ 50.0551 ms  │ 8    │
-    │ TPOT                   │total   │ 10.6965 ms     │ 10.061 ms    │ 10.8805 ms │ 10.7495 ms   │ 10.7818 ms │ 10.808 ms    │ 10.8582 ms   │ 8    │ 
-    │ ITL                    │total   │ 10.6965 ms     │ 7.3583 ms    │ 13.7707 ms │ 10.7513 ms   │ 10.8009 ms │ 10.8358 ms   │ 10.9322 ms   │ 8    │ 
-    │ InputTokens            │total   │ 1512.5         │ 1481.0       │ 1566.0     │ 1511.5       │ 1520.25    │ 1536.6       │ 1563.06      │ 8    │ 
-    │ OutputTokens           │total   │ 287.375        │ 200.0        │ 407.0      │ 280.0        │ 322.75     │ 374.8        │ 403.78       │ 8    │ 
+    │ TPOT                   │total   │ 10.6965 ms     │ 10.061 ms    │ 10.8805 ms │ 10.7495 ms   │ 10.7818 ms │ 10.808 ms    │ 10.8582 ms   │ 8    │
+    │ ITL                    │total   │ 10.6965 ms     │ 7.3583 ms    │ 13.7707 ms │ 10.7513 ms   │ 10.8009 ms │ 10.8358 ms   │ 10.9322 ms   │ 8    │
+    │ InputTokens            │total   │ 1512.5         │ 1481.0       │ 1566.0     │ 1511.5       │ 1520.25    │ 1536.6       │ 1563.06      │ 8    │
+    │ OutputTokens           │total   │ 287.375        │ 200.0        │ 407.0      │ 280.0        │ 322.75     │ 374.8        │ 403.78       │ 8    │
     │ OutputTokenThroughput  │total   │ 115.9216       │ 107.6555     │ 116.5352   │ 117.6448     │ 118.2426   │ 118.3765     │ 118.6388     │ 8    │
     ╘════════════╧════╧════════╧═══════╧══════╧═══════╧══════╧═══════╧═══════╧═══╛
     ╒═════════════╤═════╤══════════╕
-    │ Common Metric            │ Stage    │ Value              │ 
-    │ Benchmark Duration       │ total    │ 19897.8505 ms      │ 
-    │ Total Requests           │ total    │ 8                  │ 
-    │ Failed Requests          │ total    │ 0                  │ 
-    │ Success Requests         │ total    │ 8                  │ 
-    │ Concurrency              │ total    │ 0.9972             │ 
-    │ Max Concurrency          │ total    │ 1                  │ 
-    │ Request Throughput       │ total    │ 0.4021 req/s       │ 
-    │ Total Input Tokens       │ total    │ 12100              │ 
-    │ Prefill Token Throughput │ total    │ 17014.3123 token/s │ 
-    │ Total generated tokens   │ total    │ 2299               │ 
-    │ Input Token Throughput   │ total    │ 608.7438 token/s   │ 
-    │ Output Token Throughput  │ total    │ 115.7835 token/s   │ 
-    │ Total Token Throughput   │ total    │ 723.5273 token/s   │ 
+    │ Common Metric            │ Stage    │ Value              │
+    │ Benchmark Duration       │ total    │ 19897.8505 ms      │
+    │ Total Requests           │ total    │ 8                  │
+    │ Failed Requests          │ total    │ 0                  │
+    │ Success Requests         │ total    │ 8                  │
+    │ Concurrency              │ total    │ 0.9972             │
+    │ Max Concurrency          │ total    │ 1                  │
+    │ Request Throughput       │ total    │ 0.4021 req/s       │
+    │ Total Input Tokens       │ total    │ 12100              │
+    │ Prefill Token Throughput │ total    │ 17014.3123 token/s │
+    │ Total generated tokens   │ total    │ 2299               │
+    │ Input Token Throughput   │ total    │ 608.7438 token/s   │
+    │ Output Token Throughput  │ total    │ 115.7835 token/s   │
+    │ Total Token Throughput   │ total    │ 723.5273 token/s   │
     ╘═════════════╧═════╧══════════╛
     ```
 
@@ -504,15 +509,15 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
     >命令执行结束后，outputs/default/20250828\_151326中的任务执行的详情如下所示：
     >
     >```linux
-    >20250828_151326           # 每次实验基于时间戳生成的唯一目录 
-    >├── configs               # 自动存储的所有已转储配置文件 
-    >├── logs                  # 执行过程中日志，命令中如果加--debug，不会有过程日志落盘（都直接打印出来了） 
-    >│   └── performance/      # 推理阶段的日志文件 
-    >└── performance           # 性能测评结果 
-    >│    └── vllm-api-stream-chat/          # “服务化模型配置”名称，对应模型任务配置文件中models的 abbr参数 
-    >│         ├── gsm8kdataset.csv          # 单次请求性能输出（CSV），与性能结果打印中的Performance Parameters表格一致 
-    >│         ├── gsm8kdataset.json         # 端到端性能输出（JSON），与性能结果打印中的Common Metric表格一致 
-    >│         ├── gsm8kdataset_details.json # 全量打点日志（JSON） 
+    >20250828_151326           # 每次实验基于时间戳生成的唯一目录
+    >├── configs               # 自动存储的所有已转储配置文件
+    >├── logs                  # 执行过程中日志，命令中如果加--debug，不会有过程日志落盘（都直接打印出来了）
+    >│   └── performance/      # 推理阶段的日志文件
+    >└── performance           # 性能测评结果
+    >│    └── vllm-api-stream-chat/          # “服务化模型配置”名称，对应模型任务配置文件中models的 abbr参数
+    >│         ├── gsm8kdataset.csv          # 单次请求性能输出（CSV），与性能结果打印中的Performance Parameters表格一致
+    >│         ├── gsm8kdataset.json         # 端到端性能输出（JSON），与性能结果打印中的Common Metric表格一致
+    >│         ├── gsm8kdataset_details.json # 全量打点日志（JSON）
     >│         └── gsm8kdataset_plot.html    # 请求并发可视化报告（HTML）
     >```
 
@@ -539,7 +544,7 @@ data: {"prefill_time":null,"decode_time":16.80,"generated_text":"am a French pho
         >
         >    ```linux
         >    (base) [xxxx@localhost test]# ps -ef | grep 'mindieservice_daemon'
-        >    UID          PID    PPID  C STIME TTY          TIME CMD 
+        >    UID          PID    PPID  C STIME TTY          TIME CMD
         >    xxxx     1595969  386706  5 11:37 pts/1    00:00:24 ./bin/mindieservice_daemon
         >    xxxx     1606004 1595969  0 11:42 pts/1    00:00:01 ./bin/mindieservice_daemon
         >    xxxx     1606005 1595969  1 11:42 pts/1    00:00:01 ./bin/mindieservice_daemon
