@@ -49,7 +49,7 @@ repos:
     rev: v1.32.0
     hooks:
       - id: typos
-        args: ["--force-exclude", "--config", "pre-commit/typos.toml"]
+        args: ["--force-exclude", "--config", "ci/pre-commit/typos.toml"]
 
 #--------------- C++ 核心检查 ---------------------------------------------
   # clang-format：C/C++ 代码格式化
