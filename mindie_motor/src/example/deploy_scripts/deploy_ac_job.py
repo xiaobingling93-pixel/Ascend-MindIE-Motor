@@ -31,19 +31,19 @@ sys.path.append(os.getcwd())
 from gen_ranktable_helper.gen_global_ranktable import generate_global_ranktable
 from utils.file_utils import safe_open
 from utils.validate_config import validate_user_config
-from utils.validate_utils import validate_identifier, validate_path_part, validate_command_part
+from utils.validate_utils import validate_identifier, validate_path_part
 
 # 配置日志格式和级别
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler()  # 同时输出到控制台
-    ]
+    ],
 )
 
 # 创建一个YAML处理器，使用RoundTripLoader和RoundTripDumper
-yaml = YAML(typ='rt')  # RoundTrip模式
+yaml = YAML(typ="rt")  # RoundTrip模式
 yaml.preserve_quotes = True  # 保留原有引号
 MAX_P_INSTANCES_NUM = 1024
 MAX_D_INSTANCES_NUM = 1024
@@ -77,13 +77,13 @@ DEVICE = "device"
 SERVER_COUNT = "server_count"
 SERVER_IP = "server_ip"
 GROUP_ID = "group_id"
-SERVER_LIST = 'server_list'
+SERVER_LIST = "server_list"
 GROUP_LIST = "group_list"
-HARDWARE_TYPE = 'hardware_type'
-MIX_DEPLOY = 'deploy_motor_on_intelligent_server'
-HARD_AFFINITY = 'requiredDuringSchedulingIgnoredDuringExecution'
-SOFT_AFFINITY = 'preferredDuringSchedulingIgnoredDuringExecution'
-CONTAINER_IP = 'container_ip'
+HARDWARE_TYPE = "hardware_type"
+MIX_DEPLOY = "deploy_motor_on_intelligent_server"
+HARD_AFFINITY = "requiredDuringSchedulingIgnoredDuringExecution"
+SOFT_AFFINITY = "preferredDuringSchedulingIgnoredDuringExecution"
+CONTAINER_IP = "container_ip"
 DEVICE_LOGICAL_ID = "device_logical_id"
 PATH = "path"
 HOST_PATH = "hostPath"
@@ -115,8 +115,8 @@ MIND_CLUSTER_GROUP_NAME = "mind-cluster/group-name"
 PRIORITY_CLASS = "priorityClass"
 LOW_PRIORITY = "low-priority"
 HIGH_PRIORITY = "high-priority"
-P_DEPLOY_SERVER = 'p_deploy_server'
-D_DEPLOY_SERVER = 'd_deploy_server'
+P_DEPLOY_SERVER = "p_deploy_server"
+D_DEPLOY_SERVER = "d_deploy_server"
 WEIGHT_MOUNT_PATH = "weight_mount_path"
 NODE_SELECTOR = "nodeSelector"
 MINDIE_ROLE = "mindie-role"
@@ -130,8 +130,8 @@ DP = "dp"
 SP = "sp"
 CP = "cp"
 DIST_DP_SERVER_ENABLED = "distDPServerEnabled"
-NAME_MOUNT = 'mount'
-NAME_KEY = 'name'
+NAME_MOUNT = "mount"
+NAME_KEY = "name"
 MODEL_CONFIG = "ModelConfig"
 MODEL_DEPLOY_CONFIG = "ModelDeployConfig"
 BACKEND_CONFIG = "BackendConfig"
@@ -193,15 +193,15 @@ def process_yaml(data):
     if isinstance(data, dict):
         for key, value in data.items():
             # 处理以0开头的数字
-            if isinstance(value, str) and value.startswith('0') and value.isdigit():
+            if isinstance(value, str) and value.startswith("0") and value.isdigit():
                 # 将其转换为带双引号的字符串
                 data[key] = scalarstring.DoubleQuotedScalarString(value)
             else:
                 process_yaml(value)  # 递归处理子节点
 
             # 此处为示例代码：按需修改特定键的值
-            if key == 'target_key':
-                data[key] = 'new_value'
+            if key == "target_key":
+                data[key] = "new_value"
 
     elif isinstance(data, list):
         for item in data:
@@ -212,7 +212,9 @@ def read_json(json_path):
     real_path = os.path.abspath(os.path.realpath(json_path))
     if not os.path.exists(real_path):
         raise ValueError(f"Json file path: '{json_path}' is not exist!")
-    with safe_open(real_path, "r", encoding='utf-8', permission_mode=0o640) as json_file:
+    with safe_open(
+        real_path, "r", encoding="utf-8", permission_mode=0o640
+    ) as json_file:
         return json.load(json_file)
 
 
@@ -228,41 +230,43 @@ def parse_memory_string(memory_str):
 
     # 二进制单位 (1Ki = 1024)
     binary_units = {
-        'Ki': 1024,
-        'Mi': 1024 ** 2,
-        'Gi': 1024 ** 3,
-        'Ti': 1024 ** 4,
-        'Pi': 1024 ** 5,
-        'Ei': 1024 ** 6,
+        "Ki": 1024,
+        "Mi": 1024**2,
+        "Gi": 1024**3,
+        "Ti": 1024**4,
+        "Pi": 1024**5,
+        "Ei": 1024**6,
     }
 
     # 十进制单位 (1K = 1000)
     decimal_units = {
-        'K': 1000,
-        'M': 1000 ** 2,
-        'G': 1000 ** 3,
-        'T': 1000 ** 4,
-        'P': 1000 ** 5,
-        'E': 1000 ** 6,
+        "K": 1000,
+        "M": 1000**2,
+        "G": 1000**3,
+        "T": 1000**4,
+        "P": 1000**5,
+        "E": 1000**6,
     }
 
     # 尝试二进制单位
     for unit, multiplier in binary_units.items():
         if memory_str.endswith(unit):
-            value = float(memory_str[:-len(unit)])
+            value = float(memory_str[: -len(unit)])
             return int(value * multiplier)
 
     # 尝试十进制单位
     for unit, multiplier in decimal_units.items():
-        if memory_str.endswith(unit) and not memory_str.endswith('i'):
-            value = float(memory_str[:-len(unit)])
+        if memory_str.endswith(unit) and not memory_str.endswith("i"):
+            value = float(memory_str[: -len(unit)])
             return int(value * multiplier)
 
     # 纯数字（字节）
     try:
         return int(memory_str)
     except ValueError as e:
-        raise ValueError(f"Unable to parse memory string: {memory_str}, error: {e}") from e
+        raise ValueError(
+            f"Unable to parse memory string: {memory_str}, error: {e}"
+        ) from e
 
 
 def check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_path):
@@ -288,7 +292,9 @@ def check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_p
 
     # Get memory requests from YAML (not limits, as scheduler only guarantees requests)
     try:
-        containers = coordinator_yaml_data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS]
+        containers = coordinator_yaml_data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][
+            CONTAINERS
+        ]
         container_resources = containers[0][RESOURCES]
         yaml_memory_requests_str = container_resources[REQUESTS].get("memory", "0")
         yaml_memory_requests = parse_memory_string(yaml_memory_requests_str)
@@ -298,21 +304,25 @@ def check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_p
 
     # Format bytes for log output
     def format_bytes(bytes_val):
-        if bytes_val >= 1024 ** 3:
-            return f"{bytes_val / (1024 ** 3):.2f} Gi"
-        elif bytes_val >= 1024 ** 2:
-            return f"{bytes_val / (1024 ** 2):.2f} Mi"
+        if bytes_val >= 1024**3:
+            return f"{bytes_val / (1024**3):.2f} Gi"
+        elif bytes_val >= 1024**2:
+            return f"{bytes_val / (1024**2):.2f} Mi"
         else:
             return f"{bytes_val} bytes"
 
-    logging.info(f"Coordinator memory config check:")
+    logging.info("Coordinator memory config check:")
     logging.info(f"  max_requests: {max_requests}")
     logging.info(f"  body_limit: {body_limit_mb} MB ({body_limit_bytes} bytes)")
-    logging.info(f"  Theoretical max memory (with 20% margin): {format_bytes(theoretical_max_memory)}")
-    logging.info(f"  YAML memory requests: {yaml_memory_requests_str} ({yaml_memory_requests} bytes)")
+    logging.info(
+        f"  Theoretical max memory (with 20% margin): {format_bytes(theoretical_max_memory)}"
+    )
+    logging.info(
+        f"  YAML memory requests: {yaml_memory_requests_str} ({yaml_memory_requests} bytes)"
+    )
 
     # Check minimum memory requirement: 4Gi
-    min_memory_bytes = 4 * 1024 ** 3  # 4Gi = 4294967296 bytes
+    min_memory_bytes = 4 * 1024**3  # 4Gi = 4294967296 bytes
     if yaml_memory_requests < min_memory_bytes:
         yaml_mem_str = format_bytes(yaml_memory_requests)
         min_mem_str = format_bytes(min_memory_bytes)
@@ -340,7 +350,7 @@ def check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_p
         )
         raise ValueError(error_msg)
 
-    logging.info(f"Memory config check passed.")
+    logging.info("Memory config check passed.")
 
 
 def check_config(config: dict):
@@ -350,11 +360,21 @@ def check_config(config: dict):
     if config[D_INSTANCES_NUM] > MAX_D_INSTANCES_NUM or config[D_INSTANCES_NUM] < 1:
         msg = "d_instances_num must between 1 to " + str(MAX_D_INSTANCES_NUM)
         raise ValueError(msg)
-    if config[SINGER_P_INSTANCES_NUM] > MAX_SINGER_P_INSTANCES_NODE_NUM or config[P_INSTANCES_NUM] < 1:
-        msg = "singer_p_instances_node_num must between 1 to " + str(MAX_SINGER_P_INSTANCES_NODE_NUM)
+    if (
+        config[SINGER_P_INSTANCES_NUM] > MAX_SINGER_P_INSTANCES_NODE_NUM
+        or config[P_INSTANCES_NUM] < 1
+    ):
+        msg = "singer_p_instances_node_num must between 1 to " + str(
+            MAX_SINGER_P_INSTANCES_NODE_NUM
+        )
         raise ValueError(msg)
-    if config[SINGER_D_INSTANCES_NUM] > MAX_SINGER_D_INSTANCES_NODE_NUM or config[D_INSTANCES_NUM] < 1:
-        msg = "singer_d_instances_node_num must between 1 to " + str(MAX_SINGER_D_INSTANCES_NODE_NUM)
+    if (
+        config[SINGER_D_INSTANCES_NUM] > MAX_SINGER_D_INSTANCES_NODE_NUM
+        or config[D_INSTANCES_NUM] < 1
+    ):
+        msg = "singer_d_instances_node_num must between 1 to " + str(
+            MAX_SINGER_D_INSTANCES_NODE_NUM
+        )
         raise ValueError(msg)
 
 
@@ -369,7 +389,7 @@ def get_key_loc(data, namespace, key):
 
 
 def write_yaml(data, output_file, single_doc=False):
-    with safe_open(output_file, 'w', encoding="utf-8", permission_mode=0o640) as f:
+    with safe_open(output_file, "w", encoding="utf-8", permission_mode=0o640) as f:
         if single_doc:
             yaml.dump(data, f)
         else:
@@ -378,11 +398,18 @@ def write_yaml(data, output_file, single_doc=False):
 
 def exec_cmd(command, print_log=True):
     cmd_args = shlex.split(command)
-    child = subprocess.Popen(cmd_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    child = subprocess.Popen(
+        cmd_args,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+    )
     stdout, stderr = child.communicate(timeout=60)
 
     if print_log:
-        logging.info(f"Execute command: {command} \n The command result is: \n {stdout}, {stderr}")
+        logging.info(
+            f"Execute command: {command} \n The command result is: \n {stdout}, {stderr}"
+        )
     return stdout
 
 
@@ -398,16 +425,22 @@ def safe_exec_cmd(command_parts, print_log=True):
         command_parts = shlex.split(command_parts)
 
     # 验证命令的第一个参数（可执行文件）
-    allowed_commands = ['kubectl', 'sed']
+    allowed_commands = ["kubectl", "sed"]
     if command_parts[0] not in allowed_commands:
         raise ValueError(f"Command not allowed: {command_parts[0]}")
 
-    child = subprocess.Popen(command_parts, stderr=subprocess.PIPE,
-                           stdout=subprocess.PIPE, universal_newlines=True)
+    child = subprocess.Popen(
+        command_parts,
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+    )
     stdout, stderr = child.communicate(timeout=60)
 
     if print_log:
-        logging.info(f"Execute command: {' '.join(command_parts)} \n The command result is: \n {stdout}, {stderr}")
+        logging.info(
+            f"Execute command: {' '.join(command_parts)} \n The command result is: \n {stdout}, {stderr}"
+        )
     return stdout
 
 
@@ -420,11 +453,11 @@ def safe_kubectl_apply(file_path, namespace=None):
     """
     # 验证输入参数
     validated_file_path = validate_path_part(file_path, "file_path")
-    cmd_parts = ['kubectl', 'apply', '-f', validated_file_path]
+    cmd_parts = ["kubectl", "apply", "-f", validated_file_path]
 
     if namespace:
         validated_namespace = validate_identifier(namespace, "namespace")
-        cmd_parts.extend(['-n', validated_namespace])
+        cmd_parts.extend(["-n", validated_namespace])
 
     return safe_exec_cmd(cmd_parts)
 
@@ -438,16 +471,18 @@ def safe_kubectl_delete(file_path, namespace=None):
     """
     # 验证输入参数
     validated_file_path = validate_path_part(file_path, "file_path")
-    cmd_parts = ['kubectl', 'delete', '-f', validated_file_path]
+    cmd_parts = ["kubectl", "delete", "-f", validated_file_path]
 
     if namespace:
         validated_namespace = validate_identifier(namespace, "namespace")
-        cmd_parts.extend(['-n', validated_namespace])
+        cmd_parts.extend(["-n", validated_namespace])
 
     return safe_exec_cmd(cmd_parts)
 
 
-def safe_kubectl_create_configmap(name, from_file=None, from_literal=None, namespace=None):
+def safe_kubectl_create_configmap(
+    name, from_file=None, from_literal=None, namespace=None
+):
     """
     安全的kubectl create configmap调用
     :param name: configmap名称
@@ -458,18 +493,18 @@ def safe_kubectl_create_configmap(name, from_file=None, from_literal=None, names
     """
     # 验证输入参数
     validated_name = validate_identifier(name, "configmap_name")
-    cmd_parts = ['kubectl', 'create', 'configmap', validated_name]
+    cmd_parts = ["kubectl", "create", "configmap", validated_name]
 
     if from_file:
         validated_file = validate_path_part(from_file, "from_file")
-        cmd_parts.extend(['--from-file', validated_file])
+        cmd_parts.extend(["--from-file", validated_file])
     elif from_literal:
         # 对literal值进行转义
-        cmd_parts.extend(['--from-literal', shlex.quote(from_literal)])
+        cmd_parts.extend(["--from-literal", shlex.quote(from_literal)])
 
     if namespace:
         validated_namespace = validate_identifier(namespace, "namespace")
-        cmd_parts.extend(['-n', validated_namespace])
+        cmd_parts.extend(["-n", validated_namespace])
 
     return safe_exec_cmd(cmd_parts)
 
@@ -487,39 +522,48 @@ def is_valid_mount(mount_path):
 def add_mount_dir(data, add_dict, server_flag=False):
     index = 0
     for key, value in add_dict.items():
-
         if not is_valid_mount(key) or not is_valid_mount(value):
             continue
         index = index + 1
-        containers_volume = CommentedMap([
-            (NAME_KEY, NAME_MOUNT + str(index)),
-            ('mountPath', value),
-        ])
-        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS].append(containers_volume)
+        containers_volume = CommentedMap(
+            [
+                (NAME_KEY, NAME_MOUNT + str(index)),
+                ("mountPath", value),
+            ]
+        )
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][
+            VOLUME_MOUNTS
+        ].append(containers_volume)
 
-        cont_volume_worker = CommentedMap([
-            (NAME_KEY, NAME_MOUNT + str(index)),
-            ('mountPath', value),
-        ])
+        cont_volume_worker = CommentedMap(
+            [
+                (NAME_KEY, NAME_MOUNT + str(index)),
+                ("mountPath", value),
+            ]
+        )
         if server_flag:
-            data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS].append(cont_volume_worker)
+            data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][
+                VOLUME_MOUNTS
+            ].append(cont_volume_worker)
 
         # 创建新的volume条目
-        host_volume = CommentedMap([
-            (NAME_KEY, NAME_MOUNT + str(index)),
-            ('hostPath', CommentedMap([
-                ('path', key)
-            ]))
-        ])
+        host_volume = CommentedMap(
+            [
+                (NAME_KEY, NAME_MOUNT + str(index)),
+                ("hostPath", CommentedMap([("path", key)])),
+            ]
+        )
         data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES].append(host_volume)
         if server_flag:
-            host_volume_worker = CommentedMap([
-                (NAME_KEY, NAME_MOUNT + str(index)),
-                ('hostPath', CommentedMap([
-                    ('path', key)
-                ]))
-            ])
-            data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES].append(host_volume_worker)
+            host_volume_worker = CommentedMap(
+                [
+                    (NAME_KEY, NAME_MOUNT + str(index)),
+                    ("hostPath", CommentedMap([("path", key)])),
+                ]
+            )
+            data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES].append(
+                host_volume_worker
+            )
 
 
 def shell_escape(value):
@@ -530,18 +574,20 @@ def shell_escape(value):
         return str(value)
 
     # 转义特殊字符
-    value = value.replace('\\', '\\\\')  # 反斜杠
-    value = value.replace('"', '\\"')    # 双引号
-    value = value.replace('$', '\\$')    # 美元符号
-    value = value.replace('`', '\\`')    # 反引号
-    value = value.replace('\n', '\\n')   # 换行符
-    value = value.replace('\r', '\\r')   # 回车符
-    value = value.replace('\t', '\\t')   # 制表符
+    value = value.replace("\\", "\\\\")  # 反斜杠
+    value = value.replace('"', '\\"')  # 双引号
+    value = value.replace("$", "\\$")  # 美元符号
+    value = value.replace("`", "\\`")  # 反引号
+    value = value.replace("\n", "\\n")  # 换行符
+    value = value.replace("\r", "\\r")  # 回车符
+    value = value.replace("\t", "\\t")  # 制表符
 
     return value
 
 
-def update_shell_script_safely(script_path, env_config, component_key="", function_name="set_common_env"):
+def update_shell_script_safely(
+    script_path, env_config, component_key="", function_name="set_common_env"
+):
     """
     安全地更新shell脚本中的环境变量函数
     如果函数不存在，则在文件开头添加
@@ -554,7 +600,7 @@ def update_shell_script_safely(script_path, env_config, component_key="", functi
     if component_key and component_key in env_config:
         all_env_vars.update(env_config[component_key])
 
-    with safe_open(script_path, 'r', permission_mode=0o640) as f:
+    with safe_open(script_path, "r", permission_mode=0o640) as f:
         lines = f.readlines()
 
     # 查找函数开始和结束位置
@@ -569,24 +615,29 @@ def update_shell_script_safely(script_path, env_config, component_key="", functi
     new_function_lines = [
         f"function {function_name}() {{\n",
         *[
-            f'    export {key}="{shell_escape(value)}"\n' if isinstance(value, str) else f'    export {key}={value}\n'
+            f'    export {key}="{shell_escape(value)}"\n'
+            if isinstance(value, str)
+            else f"    export {key}={value}\n"
             for key, value in all_env_vars.items()
         ],
-        "}\n"
+        "}\n",
     ]
 
     # 更新或添加函数
     if start_idx != -1 and end_idx != -1:
-        new_lines = lines[:start_idx] + new_function_lines + lines[end_idx + 1:]
+        new_lines = lines[:start_idx] + new_function_lines + lines[end_idx + 1 :]
     else:
         new_lines = new_function_lines + ["\n"] + lines
 
-    with safe_open(script_path, 'w', permission_mode=0o640) as f:
+    with safe_open(script_path, "w", permission_mode=0o640) as f:
         f.writelines(new_lines)
 
 
 def modify_controller_mount(data, config):
-    add_mount_dir(data, config["deploy_mount_path"]["ms_controller_mount"], )
+    add_mount_dir(
+        data,
+        config["deploy_mount_path"]["ms_controller_mount"],
+    )
 
 
 def modify_coordinator_mount(data, config):
@@ -603,11 +654,14 @@ def modify_d_server_mount(data, config):
 
 def modify_controller_yaml(data, config, env_config, image_name=None):
     data[METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[
+        CONFIG_JOB_ID
+    ]
     data[METADATA][NAME] = config[CONFIG_JOB_ID] + "-controller"
     data[METADATA][NAMESPACE] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = \
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = (
         image_name if image_name else config[IMAGE_NAME]
+    )
     if POD_RESCHEDULING in data[METADATA][LABELS]:
         data[METADATA][LABELS][POD_RESCHEDULING] = DoubleQuotedScalarString(
             str(data[METADATA][LABELS][POD_RESCHEDULING])
@@ -619,42 +673,59 @@ def modify_controller_yaml(data, config, env_config, image_name=None):
 
 def modify_controller_replicas(data, config):
     modify_controller_yaml_affinity(data, config)
-    if CONTROLLER_BACKUP_CFG in deploy_config and CONTROLLER_BACKUP_SW in deploy_config[CONTROLLER_BACKUP_CFG]:
+    if (
+        CONTROLLER_BACKUP_CFG in deploy_config
+        and CONTROLLER_BACKUP_SW in deploy_config[CONTROLLER_BACKUP_CFG]
+    ):
         backup_switch = config[CONTROLLER_BACKUP_CFG][CONTROLLER_BACKUP_SW]
         master_cnt = data[SPEC][REPLICA_SPECS][MASTER][REPLICAS]
         worker_cnt = POD_NUM_ZERO
         if backup_switch is True or str(backup_switch).lower() == "true":
-            data[SPEC][REPLICA_SPECS][WORKER] = copy.deepcopy(data[SPEC][REPLICA_SPECS][MASTER])
+            data[SPEC][REPLICA_SPECS][WORKER] = copy.deepcopy(
+                data[SPEC][REPLICA_SPECS][MASTER]
+            )
             worker_cnt = data[SPEC][REPLICA_SPECS][WORKER][REPLICAS]
-        data[SPEC][RUN_POLICY][SCHEDULING_POLICY][MIN_AVAILABLE] = master_cnt + worker_cnt
+        data[SPEC][RUN_POLICY][SCHEDULING_POLICY][MIN_AVAILABLE] = (
+            master_cnt + worker_cnt
+        )
 
 
 def modify_controller_yaml_affinity(data, config):
     template = data[SPEC][REPLICA_SPECS][MASTER].setdefault("template", CommentedMap())
-    pod_spec = template.setdefault('spec', CommentedMap())
-    affinity = pod_spec.setdefault('affinity', CommentedMap())
+    pod_spec = template.setdefault("spec", CommentedMap())
+    affinity = pod_spec.setdefault("affinity", CommentedMap())
     # 不开昇腾部署时植入controller与智算节点反亲和(即通算节点亲和)
     if MIX_DEPLOY not in config or config[MIX_DEPLOY] is not True:
-        affinity['nodeAffinity'] = create_ascend_anti_affinity()
+        affinity["nodeAffinity"] = create_ascend_anti_affinity()
     pod_anti_affinity = CommentedMap()
     # 开启controller主备时植入controller内部反亲和
-    if CONTROLLER_BACKUP_CFG in config and CONTROLLER_BACKUP_SW in config[CONTROLLER_BACKUP_CFG]:
+    if (
+        CONTROLLER_BACKUP_CFG in config
+        and CONTROLLER_BACKUP_SW in config[CONTROLLER_BACKUP_CFG]
+    ):
         backup_switch = config[CONTROLLER_BACKUP_CFG][CONTROLLER_BACKUP_SW]
         if backup_switch is True or str(backup_switch).lower() == "true":
-            pod_anti_affinity[HARD_AFFINITY] = create_internal_anti_affinity(APP_NAME_CONTROLLER)
+            pod_anti_affinity[HARD_AFFINITY] = create_internal_anti_affinity(
+                APP_NAME_CONTROLLER
+            )
     # 默认植入coordinator和controller之间软性反亲和
-    pod_anti_affinity[SOFT_AFFINITY] = create_external_soft_anti_affinity(APP_NAME_COORDINATOR)
-    affinity['podAntiAffinity'] = pod_anti_affinity
+    pod_anti_affinity[SOFT_AFFINITY] = create_external_soft_anti_affinity(
+        APP_NAME_COORDINATOR
+    )
+    affinity["podAntiAffinity"] = pod_anti_affinity
     return data
 
 
 def modify_coordinator_yaml_app_v1(data, config, image_name=None):
     data[METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[
+        CONFIG_JOB_ID
+    ]
     data[METADATA][NAME] = config[CONFIG_JOB_ID] + "-coordinator"
     data[METADATA][NAMESPACE] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = \
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = (
         image_name if image_name else config[IMAGE_NAME]
+    )
     if POD_RESCHEDULING in data[METADATA][LABELS]:
         data[METADATA][LABELS][POD_RESCHEDULING] = DoubleQuotedScalarString(
             str(data[METADATA][LABELS][POD_RESCHEDULING])
@@ -672,7 +743,9 @@ def modify_coordinator_yaml_v1(data, config, coordinator_config):
         if port_name == "infer-http":
             if "predict_port" in coordinator_config["http_config"]:
                 port["port"] = int(coordinator_config["http_config"]["predict_port"])
-                port["targetPort"] = int(coordinator_config["http_config"]["predict_port"])
+                port["targetPort"] = int(
+                    coordinator_config["http_config"]["predict_port"]
+                )
 
 
 def modify_server_yaml_v1(data, config, index, pd_flag):
@@ -685,15 +758,23 @@ def modify_server_yaml_v1(data, config, index, pd_flag):
     if pd_flag == "p":
         data[METADATA][LABELS][MIND_CLUSTER_GROUP_NAME] = "group0"
         if prefill_distribute != decode_distrubute:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(str(prefill_distribute))
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                str(prefill_distribute)
+            )
         else:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(PREFILL_DEPLOY)
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                PREFILL_DEPLOY
+            )
     else:
         data[METADATA][LABELS][MIND_CLUSTER_GROUP_NAME] = "group1"
         if prefill_distribute != decode_distrubute:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(str(decode_distrubute))
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                str(decode_distrubute)
+            )
         else:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(DECODE_DEPLOY)
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                DECODE_DEPLOY
+            )
 
 
 def modify_server_yaml_priority(priority_data, data, pd_flag, deploy_config, index):
@@ -701,11 +782,15 @@ def modify_server_yaml_priority(priority_data, data, pd_flag, deploy_config, ind
     if pd_flag == "p":
         priority_data[METADATA][NAME] = f"{job_id}-{LOW_PRIORITY}-{pd_flag}{index}"
         priority_data[VALUE] = 1
-        data[SPEC][RUN_POLICY][SCHEDULING_POLICY][PRIORITY_CLASS] = f"{job_id}-{LOW_PRIORITY}-{pd_flag}{index}"
+        data[SPEC][RUN_POLICY][SCHEDULING_POLICY][PRIORITY_CLASS] = (
+            f"{job_id}-{LOW_PRIORITY}-{pd_flag}{index}"
+        )
     else:
         priority_data[METADATA][NAME] = f"{job_id}-{HIGH_PRIORITY}-{pd_flag}{index}"
         priority_data[VALUE] = 100
-        data[SPEC][RUN_POLICY][SCHEDULING_POLICY][PRIORITY_CLASS] = f"{job_id}-{HIGH_PRIORITY}-{pd_flag}{index}"
+        data[SPEC][RUN_POLICY][SCHEDULING_POLICY][PRIORITY_CLASS] = (
+            f"{job_id}-{HIGH_PRIORITY}-{pd_flag}{index}"
+        )
 
 
 def modify_server_yaml_mind_v1(data, config, index, pd_flag, ext):
@@ -759,48 +844,59 @@ def modify_sp_block_num(data, pd_flag, config):
         single_d_instance_pod_num = int(config[SINGER_D_INSTANCES_NUM])
         d_pod_npu_num = int(config[D_POD_NPU_NUM])
         sp_block_num = single_d_instance_pod_num * d_pod_npu_num
-        data[METADATA][ANNOTATIONS][SP_BLOCK] = DoubleQuotedScalarString(str(sp_block_num))
+        data[METADATA][ANNOTATIONS][SP_BLOCK] = DoubleQuotedScalarString(
+            str(sp_block_num)
+        )
     else:
         single_p_instance_pod_num = int(config[SINGER_P_INSTANCES_NUM])
         p_pod_npu_num = int(config[P_POD_NPU_NUM])
         sp_block_num = single_p_instance_pod_num * p_pod_npu_num
-        data[METADATA][ANNOTATIONS][SP_BLOCK] = DoubleQuotedScalarString(str(sp_block_num))
+        data[METADATA][ANNOTATIONS][SP_BLOCK] = DoubleQuotedScalarString(
+            str(sp_block_num)
+        )
 
 
 def add_mount_log(data, config, has_worker=False):
-    add_mount_common(data, "mindie-log", config["mindie_host_log_path"], config["mindie_container_log_path"],
-                     has_worker)
+    add_mount_common(
+        data,
+        "mindie-log",
+        config["mindie_host_log_path"],
+        config["mindie_container_log_path"],
+        has_worker,
+    )
 
 
 def add_mount_common(data, name, host_path, container_path, has_worker=False):
-    log_volume_mounts = CommentedMap([
-        (NAME_KEY, name),
-        ('mountPath', container_path),
-    ])
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS].append(log_volume_mounts)
+    log_volume_mounts = CommentedMap(
+        [
+            (NAME_KEY, name),
+            ("mountPath", container_path),
+        ]
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][
+        VOLUME_MOUNTS
+    ].append(log_volume_mounts)
 
-    log_volume_mounts = CommentedMap([
-        (NAME_KEY, name),
-        ('mountPath', container_path),
-    ])
+    log_volume_mounts = CommentedMap(
+        [
+            (NAME_KEY, name),
+            ("mountPath", container_path),
+        ]
+    )
     if has_worker:
-        data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS].append(log_volume_mounts)
+        data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][
+            VOLUME_MOUNTS
+        ].append(log_volume_mounts)
 
     # 创建新的volume条目
-    log_volume = CommentedMap([
-        (NAME_KEY, name),
-        ('hostPath', CommentedMap([
-            ('path', host_path)
-        ]))
-    ])
+    log_volume = CommentedMap(
+        [(NAME_KEY, name), ("hostPath", CommentedMap([("path", host_path)]))]
+    )
     data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES].append(log_volume)
     if has_worker:
-        log_volume = CommentedMap([
-            (NAME_KEY, name),
-            ('hostPath', CommentedMap([
-                ('path', host_path)
-            ]))
-        ])
+        log_volume = CommentedMap(
+            [(NAME_KEY, name), ("hostPath", CommentedMap([("path", host_path)]))]
+        )
         data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES].append(log_volume)
 
 
@@ -812,88 +908,142 @@ def modify_name_labels(config, data, index, pd_flag):
     if pd_flag == "p":
         data[METADATA][LABELS][MIND_CLUSTER_GROUP_NAME] = "group0"
         if prefill_distribute != decode_distrubute:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(str(prefill_distribute))
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                str(prefill_distribute)
+            )
         else:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(PREFILL_DEPLOY)
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                PREFILL_DEPLOY
+            )
     else:
         data[METADATA][LABELS][MIND_CLUSTER_GROUP_NAME] = "group1"
         if prefill_distribute != decode_distrubute:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(str(decode_distrubute))
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                str(decode_distrubute)
+            )
         else:
-            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(DECODE_DEPLOY)
+            data[METADATA][LABELS][DEPLOY_SERVER_NUM] = DoubleQuotedScalarString(
+                DECODE_DEPLOY
+            )
 
 
 def modify_replica_num(data, singer_instances_node_num):
     data[SPEC][RUN_POLICY][SCHEDULING_POLICY][MIN_AVAILABLE] = singer_instances_node_num
-    data[SPEC][REPLICA_SPECS][WORKER][REPLICAS] = singer_instances_node_num - WORKER_REPLICAS_OFFSET
+    data[SPEC][REPLICA_SPECS][WORKER][REPLICAS] = (
+        singer_instances_node_num - WORKER_REPLICAS_OFFSET
+    )
 
 
 def modify_ascend_config(data, index, pd_flag):
-    config_loc = get_key_loc(data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS],
-                             VOLUME_MOUNTS, ASCEND_910_CONFIG)
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][config_loc][NAME] \
-        = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][config_loc][NAME] \
-        = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
-    volumes_config_loc = get_key_loc(data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES], VOLUMES,
-                                     ASCEND_910_CONFIG)
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][NAME] \
-        = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][NAME] \
-        = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][CONFIG_MAP][NAME] \
-        = RINGS_CONFIG_MINDIE_SERVER + pd_flag + str(index)
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][CONFIG_MAP][NAME] \
-        = RINGS_CONFIG_MINDIE_SERVER + pd_flag + str(index)
+    config_loc = get_key_loc(
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS],
+        VOLUME_MOUNTS,
+        ASCEND_910_CONFIG,
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][
+        config_loc
+    ][NAME] = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][
+        config_loc
+    ][NAME] = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
+    volumes_config_loc = get_key_loc(
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES],
+        VOLUMES,
+        ASCEND_910_CONFIG,
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][
+        NAME
+    ] = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][
+        NAME
+    ] = ASCEND_910_CONFIG + "-" + pd_flag + str(index)
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][
+        CONFIG_MAP
+    ][NAME] = RINGS_CONFIG_MINDIE_SERVER + pd_flag + str(index)
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][volumes_config_loc][
+        CONFIG_MAP
+    ][NAME] = RINGS_CONFIG_MINDIE_SERVER + pd_flag + str(index)
 
 
 def modify_server_config(data, index, pd_flag):
-    server_config_loc = get_key_loc(data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS],
-                                    VOLUME_MOUNTS, "mindie-server-config")
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][server_config_loc][NAME] \
-        = MINDIE_SERVER + pd_flag + str(index) + CONFIG
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][server_config_loc][NAME] \
-        = MINDIE_SERVER + pd_flag + str(index) + CONFIG
-    volumes_server_config_loc = get_key_loc(data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES],
-                                            VOLUMES, "mindie-server-config")
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][volumes_server_config_loc][NAME] = (
-            MINDIE_SERVER + pd_flag + str(index) + CONFIG)
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][volumes_server_config_loc][CONFIG_MAP][NAME] = (
-            MINDIE_SERVER + pd_flag + str(index) + CONFIG)
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][volumes_server_config_loc][NAME] = (
-            MINDIE_SERVER + pd_flag + str(index) + CONFIG)
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][volumes_server_config_loc][CONFIG_MAP][NAME] = (
-            MINDIE_SERVER + pd_flag + str(index) + CONFIG)
+    server_config_loc = get_key_loc(
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS],
+        VOLUME_MOUNTS,
+        "mindie-server-config",
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][
+        server_config_loc
+    ][NAME] = MINDIE_SERVER + pd_flag + str(index) + CONFIG
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][
+        server_config_loc
+    ][NAME] = MINDIE_SERVER + pd_flag + str(index) + CONFIG
+    volumes_server_config_loc = get_key_loc(
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES],
+        VOLUMES,
+        "mindie-server-config",
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][
+        volumes_server_config_loc
+    ][NAME] = MINDIE_SERVER + pd_flag + str(index) + CONFIG
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][
+        volumes_server_config_loc
+    ][CONFIG_MAP][NAME] = MINDIE_SERVER + pd_flag + str(index) + CONFIG
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][
+        volumes_server_config_loc
+    ][NAME] = MINDIE_SERVER + pd_flag + str(index) + CONFIG
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][
+        volumes_server_config_loc
+    ][CONFIG_MAP][NAME] = MINDIE_SERVER + pd_flag + str(index) + CONFIG
 
 
 def modify_weight_mount_path(config, data):
-    mindie_log_path_loc = get_key_loc(data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS],
-                                      VOLUME_MOUNTS, "weight-mount-path")
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][mindie_log_path_loc][MOUNT_PATH] \
-        = config[WEIGHT_MOUNT_PATH]
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][mindie_log_path_loc][MOUNT_PATH] \
-        = config[WEIGHT_MOUNT_PATH]
-    host_log_path_loc = get_key_loc(data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES],
-                                    VOLUMES, "weight-mount-path")
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][host_log_path_loc][HOST_PATH][PATH] = (
-        config)[WEIGHT_MOUNT_PATH]
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][host_log_path_loc][HOST_PATH][PATH] = (
-        config)[WEIGHT_MOUNT_PATH]
+    mindie_log_path_loc = get_key_loc(
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS],
+        VOLUME_MOUNTS,
+        "weight-mount-path",
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][
+        mindie_log_path_loc
+    ][MOUNT_PATH] = config[WEIGHT_MOUNT_PATH]
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][VOLUME_MOUNTS][
+        mindie_log_path_loc
+    ][MOUNT_PATH] = config[WEIGHT_MOUNT_PATH]
+    host_log_path_loc = get_key_loc(
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES],
+        VOLUMES,
+        "weight-mount-path",
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][VOLUMES][host_log_path_loc][
+        HOST_PATH
+    ][PATH] = (config)[WEIGHT_MOUNT_PATH]
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][VOLUMES][host_log_path_loc][
+        HOST_PATH
+    ][PATH] = (config)[WEIGHT_MOUNT_PATH]
 
 
 def modify_server_yaml_common(config, data, env_config, pd_flag, image_name=None):
     modify_server_env(data, config, env_config, pd_flag)
     data[METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
     data[METADATA][NAMESPACE] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = \
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[
+        CONFIG_JOB_ID
+    ]
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[
+        CONFIG_JOB_ID
+    ]
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = (
         image_name if image_name else config[IMAGE_NAME]
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = \
+    )
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = (
         image_name if image_name else config[IMAGE_NAME]
+    )
     if HARDWARE_TYPE in config and config["hardware_type"] == "800I_A3":
-        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC]["nodeSelector"]["accelerator-type"] = "module-a3-16"
-        data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC]["nodeSelector"]["accelerator-type"] = "module-a3-16"
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC]["nodeSelector"][
+            "accelerator-type"
+        ] = "module-a3-16"
+        data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC]["nodeSelector"][
+            "accelerator-type"
+        ] = "module-a3-16"
 
 
 def modify_server_yaml_singer_v1(data, config):
@@ -902,56 +1052,80 @@ def modify_server_yaml_singer_v1(data, config):
 
 def modify_server_yaml_singer_apps_v1(data, config):
     data[METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = config[IMAGE_NAME]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[CONFIG_JOB_ID]
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][IMAGE] = config[
+        IMAGE_NAME
+    ]
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][METADATA][LABELS][JOB_ID] = config[
+        CONFIG_JOB_ID
+    ]
 
 
 def modify_npu_num(data, config, pd_flag):
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][REQUESTS][ASCEND_910_NPU_NUM] \
-        = config[pd_flag + POD_NPU_NUM]
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][LIMITS][ASCEND_910_NPU_NUM] \
-        = config[pd_flag + POD_NPU_NUM]
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][REQUESTS][ASCEND_910_NPU_NUM] \
-        = config[pd_flag + POD_NPU_NUM]
-    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][LIMITS][ASCEND_910_NPU_NUM] \
-        = config[pd_flag + POD_NPU_NUM]
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][
+        REQUESTS
+    ][ASCEND_910_NPU_NUM] = config[pd_flag + POD_NPU_NUM]
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][LIMITS][
+        ASCEND_910_NPU_NUM
+    ] = config[pd_flag + POD_NPU_NUM]
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][
+        REQUESTS
+    ][ASCEND_910_NPU_NUM] = config[pd_flag + POD_NPU_NUM]
+    data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][RESOURCES][LIMITS][
+        ASCEND_910_NPU_NUM
+    ] = config[pd_flag + POD_NPU_NUM]
 
 
 def modify_controller_env(data, config):
-    modify_env_common(data, "CONTROLLER_LOG_CONFIG_PATH", config[CONTAINER_LOG_PATH], False)
+    modify_env_common(
+        data, "CONTROLLER_LOG_CONFIG_PATH", config[CONTAINER_LOG_PATH], False
+    )
     if len(config["mindie_host_log_path"]) != 0:
         add_mount_log(data, config, False)
 
 
 def modify_coordinator_env(data, config):
-    modify_env_common(data, "COORDINATOR_LOG_CONFIG_PATH", config[CONTAINER_LOG_PATH], False)
+    modify_env_common(
+        data, "COORDINATOR_LOG_CONFIG_PATH", config[CONTAINER_LOG_PATH], False
+    )
     if len(config["mindie_host_log_path"]) != 0:
         add_mount_log(data, config, False)
 
 
 def modify_coordinator_yaml_replicas(data, config):
     data = modify_coordinator_yaml_affinity(data, config)
-    if COORDINATOR_BACKUP_CFG in config and config[COORDINATOR_BACKUP_CFG][COORDINATOR_BACKUP_SW]:
-        data[SPEC][REPLICA_SPECS][WORKER] = copy.deepcopy(data[SPEC][REPLICA_SPECS][MASTER])
+    if (
+        COORDINATOR_BACKUP_CFG in config
+        and config[COORDINATOR_BACKUP_CFG][COORDINATOR_BACKUP_SW]
+    ):
+        data[SPEC][REPLICA_SPECS][WORKER] = copy.deepcopy(
+            data[SPEC][REPLICA_SPECS][MASTER]
+        )
         data[SPEC]["runPolicy"]["schedulingPolicy"]["minAvailable"] = 2
 
 
 def modify_coordinator_yaml_affinity(data, config):
     template = data[SPEC][REPLICA_SPECS][MASTER].setdefault("template", CommentedMap())
-    pod_spec = template.setdefault('spec', CommentedMap())
-    affinity = pod_spec.setdefault('affinity', CommentedMap())
+    pod_spec = template.setdefault("spec", CommentedMap())
+    affinity = pod_spec.setdefault("affinity", CommentedMap())
     # 不开昇腾部署时植入coordinator与智算节点反亲和(即通算节点亲和)
     if MIX_DEPLOY not in config or config[MIX_DEPLOY] is not True:
-        affinity['nodeAffinity'] = create_ascend_anti_affinity()
+        affinity["nodeAffinity"] = create_ascend_anti_affinity()
     pod_anti_affinity = CommentedMap()
     # 开启coordinator主备时植入coordinator内部反亲和
-    if COORDINATOR_BACKUP_CFG in config and COORDINATOR_BACKUP_SW in config[COORDINATOR_BACKUP_CFG]:
+    if (
+        COORDINATOR_BACKUP_CFG in config
+        and COORDINATOR_BACKUP_SW in config[COORDINATOR_BACKUP_CFG]
+    ):
         backup_switch = config[COORDINATOR_BACKUP_CFG][COORDINATOR_BACKUP_SW]
         if backup_switch is True or str(backup_switch).lower() == "true":
-            pod_anti_affinity[HARD_AFFINITY] = create_internal_anti_affinity(APP_NAME_COORDINATOR)
+            pod_anti_affinity[HARD_AFFINITY] = create_internal_anti_affinity(
+                APP_NAME_COORDINATOR
+            )
     # 默认植入coordinator和controller之间软性反亲和
-    pod_anti_affinity[SOFT_AFFINITY] = create_external_soft_anti_affinity(APP_NAME_CONTROLLER)
-    affinity['podAntiAffinity'] = pod_anti_affinity
+    pod_anti_affinity[SOFT_AFFINITY] = create_external_soft_anti_affinity(
+        APP_NAME_CONTROLLER
+    )
+    affinity["podAntiAffinity"] = pod_anti_affinity
     return data
 
 
@@ -960,61 +1134,89 @@ def create_ascend_anti_affinity():
     required_node_terms = CommentedSeq()
     match_expressions = CommentedSeq()
 
-    match_expressions.append(CommentedMap([
-        ('key', 'accelerator'),
-        ('operator', 'NotIn'),
-        ('values', ['huawei-Ascend910'])
-    ]))
-    required_node_terms.append(CommentedMap([
-        ('matchExpressions', match_expressions)
-    ]))
-    node_affinity[HARD_AFFINITY] = CommentedMap([
-        ('nodeSelectorTerms', required_node_terms)
-    ])
-    logging.warning("Inject ascend anti_affinity, make true that you have enough general computing server!")
+    match_expressions.append(
+        CommentedMap(
+            [
+                ("key", "accelerator"),
+                ("operator", "NotIn"),
+                ("values", ["huawei-Ascend910"]),
+            ]
+        )
+    )
+    required_node_terms.append(CommentedMap([("matchExpressions", match_expressions)]))
+    node_affinity[HARD_AFFINITY] = CommentedMap(
+        [("nodeSelectorTerms", required_node_terms)]
+    )
+    logging.warning(
+        "Inject ascend anti_affinity, make true that you have enough general computing server!"
+    )
     return node_affinity
 
 
 def create_internal_anti_affinity(app_label):
     anti_affinity_terms = CommentedSeq()
-    label_selector = CommentedMap([
-        ('matchExpressions', CommentedSeq([
-            CommentedMap([
-                ('key', 'app'),
-                ('operator', 'In'),
-                ('values', [app_label])
-            ])
-        ]))
-    ])
+    label_selector = CommentedMap(
+        [
+            (
+                "matchExpressions",
+                CommentedSeq(
+                    [
+                        CommentedMap(
+                            [
+                                ("key", "app"),
+                                ("operator", "In"),
+                                ("values", [app_label]),
+                            ]
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
 
-    anti_affinity_terms.append(CommentedMap([
-        ('labelSelector', label_selector),
-        ('topologyKey', 'kubernetes.io/hostname')
-    ]))
-    logging.warning(f"Inject {app_label} anti_affinity, make true that you have at lease more than two servers!")
+    anti_affinity_terms.append(
+        CommentedMap(
+            [
+                ("labelSelector", label_selector),
+                ("topologyKey", "kubernetes.io/hostname"),
+            ]
+        )
+    )
+    logging.warning(
+        f"Inject {app_label} anti_affinity, make true that you have at lease more than two servers!"
+    )
     return anti_affinity_terms
 
 
 def create_external_soft_anti_affinity(app_label):
-    label_selector = CommentedMap([
-        ('matchExpressions', CommentedSeq([
-            CommentedMap([
-                ('key', 'app'),
-                ('operator', 'In'),
-                ('values', [app_label])
-            ])
-        ]))
-    ])
-    prefer_anti_affinity_terms = CommentedMap([
-        ('labelSelector', label_selector),
-        ('topologyKey', 'kubernetes.io/hostname')
-    ])
+    label_selector = CommentedMap(
+        [
+            (
+                "matchExpressions",
+                CommentedSeq(
+                    [
+                        CommentedMap(
+                            [
+                                ("key", "app"),
+                                ("operator", "In"),
+                                ("values", [app_label]),
+                            ]
+                        )
+                    ]
+                ),
+            )
+        ]
+    )
+    prefer_anti_affinity_terms = CommentedMap(
+        [("labelSelector", label_selector), ("topologyKey", "kubernetes.io/hostname")]
+    )
     other_anti_affinity_terms = CommentedSeq()
-    other_anti_affinity_terms.append(CommentedMap([
-        ('weight', 100),
-        ('podAffinityTerm', prefer_anti_affinity_terms)
-    ]))
-    logging.info(f"Inject soft anti_affinity between {APP_NAME_COORDINATOR} and {APP_NAME_CONTROLLER}!")
+    other_anti_affinity_terms.append(
+        CommentedMap([("weight", 100), ("podAffinityTerm", prefer_anti_affinity_terms)])
+    )
+    logging.info(
+        f"Inject soft anti_affinity between {APP_NAME_COORDINATOR} and {APP_NAME_CONTROLLER}!"
+    )
     return other_anti_affinity_terms
 
 
@@ -1026,52 +1228,66 @@ def modify_probe_commands(data, has_worker=False):
     """
     containers = [data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0]]
     if has_worker:
-        containers.append(data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0])
-    
-    probe_types = ['readinessProbe', 'livenessProbe', 'startupProbe']
-    
+        containers.append(
+            data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0]
+        )
+
+    probe_types = ["readinessProbe", "livenessProbe", "startupProbe"]
+
     for container in containers:
         for probe_type in probe_types:
             if probe_type in container:
                 probe_config = container[probe_type]
                 if EXEC in probe_config and COMMAND in probe_config[EXEC]:
                     # Get periodSeconds and timeoutSeconds values
-                    period_seconds = probe_config.get('periodSeconds', 5)
-                    timeout_seconds = probe_config.get('timeoutSeconds', 1)
+                    period_seconds = probe_config.get("periodSeconds", 5)
+                    timeout_seconds = probe_config.get("timeoutSeconds", 1)
                     retry_times = 0  # Default retry times
-                    
+
                     # Ensure timeout is less than period
                     if timeout_seconds >= period_seconds:
                         timeout_seconds = max(1, period_seconds - 1)
-                    
+
                     # Extract the probe command
                     cmd = probe_config[EXEC][COMMAND]
                     # cmd is usually: ['bash', '-c', '$MIES_INSTALL_PATH/scripts/http_client_ctl/probe.sh <type>']
-                    if len(cmd) >= 3 and 'probe.sh' in cmd[2]:
+                    if len(cmd) >= 3 and "probe.sh" in cmd[2]:
                         # Append timeout and retry parameters to probe.sh call
-                        cmd[2] = f'{cmd[2]} {timeout_seconds} {retry_times}'
+                        cmd[2] = f"{cmd[2]} {timeout_seconds} {retry_times}"
 
 
 def modify_env_common(data, env_key, env_value, has_worker=False):
-    env_loc = get_key_loc(data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][ENV],
-                          ENV, env_key)
-    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][ENV][env_loc][VALUE] = env_value
+    env_loc = get_key_loc(
+        data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][ENV],
+        ENV,
+        env_key,
+    )
+    data[SPEC][REPLICA_SPECS][MASTER][TEMPLATE][SPEC][CONTAINERS][0][ENV][env_loc][
+        VALUE
+    ] = env_value
     if has_worker:
-        data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][ENV][env_loc][VALUE] = (
-            env_value)
+        data[SPEC][REPLICA_SPECS][WORKER][TEMPLATE][SPEC][CONTAINERS][0][ENV][env_loc][
+            VALUE
+        ] = env_value
 
 
 def modify_server_env(data, config, env_config, pd_flag):
     modify_env_common(data, "MINDIE_LOG_CONFIG_PATH", config[CONTAINER_LOG_PATH], True)
-    modify_env_common(data, "INITIAL_DP_SERVER_PORT", DoubleQuotedScalarString(str(INIT_PORT)), True)
+    modify_env_common(
+        data, "INITIAL_DP_SERVER_PORT", DoubleQuotedScalarString(str(INIT_PORT)), True
+    )
 
     # 根据pd_flag导入对应的环境变量
     if pd_flag == "p":
         modify_env_common(data, "ROLE", "p", True)
-        update_shell_script_safely(BOOT_SHELL_PATH, env_config, "mindie_server_prefill_env", "set_prefill_env")
+        update_shell_script_safely(
+            BOOT_SHELL_PATH, env_config, "mindie_server_prefill_env", "set_prefill_env"
+        )
     elif pd_flag == "d":
         modify_env_common(data, "ROLE", "d", True)
-        update_shell_script_safely(BOOT_SHELL_PATH, env_config, "mindie_server_decode_env", "set_decode_env")
+        update_shell_script_safely(
+            BOOT_SHELL_PATH, env_config, "mindie_server_decode_env", "set_decode_env"
+        )
     else:
         raise Exception("pd_flag is not p or d")
 
@@ -1079,7 +1295,9 @@ def modify_server_env(data, config, env_config, pd_flag):
         add_mount_log(data, config, True)
 
 
-def generator_yaml(input_yaml, output_file, json_path, single_doc=False, env_config=None):
+def generator_yaml(
+    input_yaml, output_file, json_path, single_doc=False, env_config=None
+):
     """
     主函数，读取YAML文件，处理数据，然后写入新文件。
     """
@@ -1092,16 +1310,30 @@ def generator_yaml(input_yaml, output_file, json_path, single_doc=False, env_con
     if "controller" in input_yaml:
         controller_config = json_config_original["mindie_ms_controller_config"]
         data = load_yaml(input_yaml, single_doc)
-        modify_controller_yaml(data, json_config, env_config, controller_config.get(IMAGE_NAME))
+        modify_controller_yaml(
+            data, json_config, env_config, controller_config.get(IMAGE_NAME)
+        )
         modify_controller_replicas(data, json_config)
-        update_shell_script_safely(BOOT_SHELL_PATH, env_config, "mindie_ms_controller_env", "set_controller_env")
+        update_shell_script_safely(
+            BOOT_SHELL_PATH,
+            env_config,
+            "mindie_ms_controller_env",
+            "set_controller_env",
+        )
         write_yaml(data, output_file, single_doc)
     elif "coordinator" in input_yaml:
         coordinator_config = json_config_original["mindie_ms_coordinator_config"]
         data = load_yaml(input_yaml, single_doc)
-        modify_coordinator_yaml_app_v1(data[0], json_config, coordinator_config.get(IMAGE_NAME))
+        modify_coordinator_yaml_app_v1(
+            data[0], json_config, coordinator_config.get(IMAGE_NAME)
+        )
         modify_coordinator_yaml_v1(data[1], json_config, coordinator_config)
-        update_shell_script_safely(BOOT_SHELL_PATH, env_config, "mindie_ms_coordinator_env", "set_coordinator_env")
+        update_shell_script_safely(
+            BOOT_SHELL_PATH,
+            env_config,
+            "mindie_ms_coordinator_env",
+            "set_coordinator_env",
+        )
         modify_coordinator_yaml_replicas(data[0], json_config)
         write_yaml(data, output_file, single_doc)
     elif "server" in input_yaml:
@@ -1143,7 +1375,7 @@ def generator_yaml(input_yaml, output_file, json_path, single_doc=False, env_con
 
 def load_yaml(input_yaml, single_doc):
     # 打开原始yaml文件
-    with safe_open(input_yaml, 'r', encoding="utf-8", permission_mode=0o640) as f:
+    with safe_open(input_yaml, "r", encoding="utf-8", permission_mode=0o640) as f:
         if single_doc:
             data = ym.safe_load(f)
         else:
@@ -1199,60 +1431,111 @@ def update_dict(original, modified):
 
 
 def write_json_data(data, json_path):
-    with safe_open(json_path, 'w', permission_mode=0o640) as r:
+    with safe_open(json_path, "w", permission_mode=0o640) as r:
         json.dump(data, r, indent=4, ensure_ascii=False)
 
 
 def exec_cm_create_kubectl_multi(deploy_config, out_path):
     job_id = deploy_config[CONFIG_JOB_ID]
-    out_conf_path = os.path.join(out_path, 'conf')
+    out_conf_path = os.path.join(out_path, "conf")
     logging.info("Starting to execute kubectl create configmap multi")
     # 创建各种configmaps
-    safe_kubectl_create_configmap("common-env", from_literal="MINDIE_USER_HOME_PATH=/usr/local", namespace=job_id)
-    safe_kubectl_create_configmap("boot-bash-script", from_file="./boot_helper/boot.sh", namespace=job_id)
-    safe_kubectl_create_configmap("server-prestop-bash-script",
-                                  from_file="./boot_helper/server_prestop.sh", namespace=job_id)
-    safe_kubectl_create_configmap("python-script-get-group-id",
-                                  from_file="./boot_helper/get_group_id.py", namespace=job_id)
-    safe_kubectl_create_configmap("python-script-update-server-conf",
-                                 from_file="./boot_helper/update_mindie_server_config.py", namespace=job_id)
-    safe_kubectl_create_configmap("global-ranktable",
-                                  from_file="./gen_ranktable_helper/global_ranktable.json", namespace=job_id)
-    safe_kubectl_create_configmap("python-file-utils",
-                                  from_file="./utils/file_utils.py", namespace=job_id)
+    safe_kubectl_create_configmap(
+        "common-env", from_literal="MINDIE_USER_HOME_PATH=/usr/local", namespace=job_id
+    )
+    safe_kubectl_create_configmap(
+        "boot-bash-script", from_file="./boot_helper/boot.sh", namespace=job_id
+    )
+    safe_kubectl_create_configmap(
+        "server-prestop-bash-script",
+        from_file="./boot_helper/server_prestop.sh",
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "python-script-get-group-id",
+        from_file="./boot_helper/get_group_id.py",
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "python-script-update-server-conf",
+        from_file="./boot_helper/update_mindie_server_config.py",
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "global-ranktable",
+        from_file="./gen_ranktable_helper/global_ranktable.json",
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "python-file-utils", from_file="./utils/file_utils.py", namespace=job_id
+    )
 
     # 创建配置相关的configmaps
-    safe_kubectl_create_configmap("mindie-ms-coordinator-config",
-                                 from_file=os.path.join(out_conf_path, "ms_coordinator.json"), namespace=job_id)
-    safe_kubectl_create_configmap("mindie-ms-controller-config",
-                                 from_file=os.path.join(out_conf_path, "ms_controller.json"), namespace=job_id)
-    safe_kubectl_create_configmap("mindie-ms-node-manager-config",
-                                  from_file=os.path.join(out_conf_path, "node_manager.json"), namespace=job_id)
-    safe_kubectl_create_configmap("mindie-http-client-ctl-config",
-                                 from_file=os.path.join(out_conf_path, "http_client_ctl.json"), namespace=job_id)
-    safe_kubectl_create_configmap("scaling-rule",
-                                 from_file=os.path.join(str(out_path), "elastic_scaling.json"), namespace=job_id)
-    safe_kubectl_create_configmap("python-script-gen-config-single-container",
-                                 from_file="./boot_helper/gen_config_single_container.py", namespace=job_id)
+    safe_kubectl_create_configmap(
+        "mindie-ms-coordinator-config",
+        from_file=os.path.join(out_conf_path, "ms_coordinator.json"),
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "mindie-ms-controller-config",
+        from_file=os.path.join(out_conf_path, "ms_controller.json"),
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "mindie-ms-node-manager-config",
+        from_file=os.path.join(out_conf_path, "node_manager.json"),
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "mindie-http-client-ctl-config",
+        from_file=os.path.join(out_conf_path, "http_client_ctl.json"),
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "scaling-rule",
+        from_file=os.path.join(str(out_path), "elastic_scaling.json"),
+        namespace=job_id,
+    )
+    safe_kubectl_create_configmap(
+        "python-script-gen-config-single-container",
+        from_file="./boot_helper/gen_config_single_container.py",
+        namespace=job_id,
+    )
 
 
 def exec_cm_elastic_kubectl(deploy_config, out_path):
-    job_id = deploy_config[CONFIG_JOB_ID]
     logging.info("Starting to execute kubectl update configmap elastic")
-    exec_cmd("kubectl delete configmap scaling-rule" + NAME_FLAG + deploy_config[CONFIG_JOB_ID])
-    exec_cmd("kubectl create configmap scaling-rule --from-file=" +
-             os.path.join(str(out_path), "elastic_scaling.json" + NAME_FLAG + deploy_config[CONFIG_JOB_ID]))
+    exec_cmd(
+        "kubectl delete configmap scaling-rule"
+        + NAME_FLAG
+        + deploy_config[CONFIG_JOB_ID]
+    )
+    exec_cmd(
+        "kubectl create configmap scaling-rule --from-file="
+        + os.path.join(
+            str(out_path),
+            "elastic_scaling.json" + NAME_FLAG + deploy_config[CONFIG_JOB_ID],
+        )
+    )
     # 利用k8s的informer机制，给controller的pod打一个annotation，使得configmap的变化pod可以马上可以感知到
-    pods_output = exec_cmd("kubectl get pods -l app=mindie-ms-controller -n " + deploy_config[CONFIG_JOB_ID] +
-                           " -o name")
+    pods_output = exec_cmd(
+        "kubectl get pods -l app=mindie-ms-controller -n "
+        + deploy_config[CONFIG_JOB_ID]
+        + " -o name"
+    )
     pods = pods_output.strip().splitlines()
 
-    current_time = datetime.now(ZoneInfo('Asia/Shanghai')).strftime('%Y%m%d%H%M%S')
+    current_time = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y%m%d%H%M%S")
     for pod in pods:
         # 去除前缀"pod/"
         pod = pod[4:]
-        annotate_cmd = (f"kubectl annotate pod {pod} -n " + deploy_config[CONFIG_JOB_ID] +
-                        " config-update=update_scaling_rule-" + current_time + " --overwrite")
+        annotate_cmd = (
+            f"kubectl annotate pod {pod} -n "
+            + deploy_config[CONFIG_JOB_ID]
+            + " config-update=update_scaling_rule-"
+            + current_time
+            + " --overwrite"
+        )
         exec_cmd(annotate_cmd)
     logging.info("End to execute kubectl update configmap elastic")
 
@@ -1271,53 +1554,63 @@ def get_p_instance_scale_in_delete_order(job_id, p_base, p_total):
         return []
     default_order = list(range(p_base - 1, p_base - num_to_delete - 1, -1))
     try:
-        cmd_parts = ['kubectl', 'get', 'pods', '-n', job_id, '-o', 'json']
+        cmd_parts = ["kubectl", "get", "pods", "-n", job_id, "-o", "json"]
         result = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
-            logging.warning(f"kubectl get pods failed, use default ascending order. stderr: {result.stderr}")
+            logging.warning(
+                f"kubectl get pods failed, use default ascending order. stderr: {result.stderr}"
+            )
             return default_order
         pods_data = json.loads(result.stdout)
     except (json.JSONDecodeError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         logging.warning(f"Failed to get pod status: {e}, use default ascending order")
         return default_order
-    
+
     existing_pods = {}
-    pattern = re.compile(r'mindie-server-p(\d+)')
-    for item in pods_data.get('items', []):
-        pod_name = item.get('metadata', {}).get('name', '')
-        phase = item.get('status', {}).get('phase', '')
+    pattern = re.compile(r"mindie-server-p(\d+)")
+    for item in pods_data.get("items", []):
+        pod_name = item.get("metadata", {}).get("name", "")
+        phase = item.get("status", {}).get("phase", "")
         match = pattern.search(pod_name)
         if match:
             idx = int(match.group(1))
             existing_pods[idx] = phase
-            
+
     if not existing_pods:
         return default_order
-        
+
     sorted_indices = sorted(existing_pods.keys(), reverse=True)
-    pending_indices = [idx for idx in sorted_indices if existing_pods[idx] == 'Pending']
-    non_pending_indices = [idx for idx in sorted_indices if existing_pods[idx] != 'Pending']
-    
+    pending_indices = [idx for idx in sorted_indices if existing_pods[idx] == "Pending"]
+    non_pending_indices = [
+        idx for idx in sorted_indices if existing_pods[idx] != "Pending"
+    ]
+
     full_priority_order = pending_indices + non_pending_indices
     return full_priority_order[:num_to_delete]
 
 
-def elastic_distributed_server_deploy(deploy_config, out_conf_path, out_deploy_yaml_path):
-    elastic_distributed_server_deploy_p(deploy_config, out_conf_path, out_deploy_yaml_path)
-    elastic_distributed_server_deploy_d(deploy_config, out_conf_path, out_deploy_yaml_path)
+def elastic_distributed_server_deploy(
+    deploy_config, out_conf_path, out_deploy_yaml_path
+):
+    elastic_distributed_server_deploy_p(
+        deploy_config, out_conf_path, out_deploy_yaml_path
+    )
+    elastic_distributed_server_deploy_d(
+        deploy_config, out_conf_path, out_deploy_yaml_path
+    )
 
 
 def get_max_p_instance_index(job_id):
     try:
-        cmd_parts = ['kubectl', 'get', 'pods', '-n', job_id, '-o', 'json']
+        cmd_parts = ["kubectl", "get", "pods", "-n", job_id, "-o", "json"]
         result = subprocess.run(cmd_parts, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
             return -1
         pods_data = json.loads(result.stdout)
-        pattern = re.compile(r'mindie-server-p(\d+)')
+        pattern = re.compile(r"mindie-server-p(\d+)")
         max_idx = -1
-        for item in pods_data.get('items', []):
-            pod_name = item.get('metadata', {}).get('name', '')
+        for item in pods_data.get("items", []):
+            pod_name = item.get("metadata", {}).get("name", "")
             match = pattern.search(pod_name)
             if match:
                 idx = int(match.group(1))
@@ -1329,7 +1622,9 @@ def get_max_p_instance_index(job_id):
         return -1
 
 
-def elastic_distributed_server_deploy_p(deploy_config, out_conf_path, out_deploy_yaml_path):
+def elastic_distributed_server_deploy_p(
+    deploy_config, out_conf_path, out_deploy_yaml_path
+):
     job_id = deploy_config[CONFIG_JOB_ID]
     p_total, _ = obtain_server_instance_total(deploy_config)
     p_base, _ = obtain_server_instance_base_config(deploy_config)
@@ -1341,7 +1636,10 @@ def elastic_distributed_server_deploy_p(deploy_config, out_conf_path, out_deploy
             # 删除旧的configmap
             exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
             # 删除旧的YAML
-            safe_kubectl_delete(os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id)
+            safe_kubectl_delete(
+                os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"),
+                job_id,
+            )
     if p_total > p_base:
         logging.info(f"Scale-out p instance, {p_base} -> {p_total}")
         max_idx = get_max_p_instance_index(job_id)
@@ -1351,15 +1649,25 @@ def elastic_distributed_server_deploy_p(deploy_config, out_conf_path, out_deploy
             # 删除旧的configmap和YAML
             configmap_name = f"mindie-server-p{index}-config"
             exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
-            safe_kubectl_delete(os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id)
+            safe_kubectl_delete(
+                os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"),
+                job_id,
+            )
             # 创建新的configmap
             config_file = os.path.join(out_conf_path, "config_p.json")
-            safe_kubectl_create_configmap(configmap_name, from_file=f"config.json={config_file}", namespace=job_id)
+            safe_kubectl_create_configmap(
+                configmap_name, from_file=f"config.json={config_file}", namespace=job_id
+            )
             # 应用YAML文件
-            safe_kubectl_apply(os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id)
+            safe_kubectl_apply(
+                os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"),
+                job_id,
+            )
 
 
-def elastic_distributed_server_deploy_d(deploy_config, out_conf_path, out_deploy_yaml_path):
+def elastic_distributed_server_deploy_d(
+    deploy_config, out_conf_path, out_deploy_yaml_path
+):
     job_id = deploy_config[CONFIG_JOB_ID]
     _, d_total = obtain_server_instance_total(deploy_config)
     _, d_base = obtain_server_instance_base_config(deploy_config)
@@ -1370,60 +1678,88 @@ def elastic_distributed_server_deploy_d(deploy_config, out_conf_path, out_deploy
             # 删除旧的configmap
             exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
             # 删除旧的YAML
-            safe_kubectl_delete(os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id)
+            safe_kubectl_delete(
+                os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"),
+                job_id,
+            )
     if d_total > d_base:
         logging.info(f"Scale-out d instance, {d_base} -> {d_total}")
         for index in range(d_base, d_total):
             # 删除旧的configmap和YAML
             configmap_name = f"mindie-server-d{index}-config"
             exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
-            safe_kubectl_delete(os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id)
+            safe_kubectl_delete(
+                os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"),
+                job_id,
+            )
             # 创建新的configmap
             config_file = os.path.join(out_conf_path, "config_d.json")
-            safe_kubectl_create_configmap(configmap_name, from_file=f"config.json={config_file}", namespace=job_id)
+            safe_kubectl_create_configmap(
+                configmap_name, from_file=f"config.json={config_file}", namespace=job_id
+            )
             # 应用YAML文件
-            safe_kubectl_apply(os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id)
+            safe_kubectl_apply(
+                os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"),
+                job_id,
+            )
 
 
 def exec_all_kubectl_multi(deploy_config, out_path, user_config_path, model_id):
-    out_conf_path = os.path.join(out_path, 'conf')
-    out_deploy_yaml_path = os.path.join(out_path, 'deployment')
+    out_conf_path = os.path.join(out_path, "conf")
+    out_deploy_yaml_path = os.path.join(out_path, "deployment")
     if is_first_run(deploy_config):
         exec_cm_create_kubectl_multi(deploy_config, out_path)
         logging.info("Starting to execute kubectl create controller and coordinator")
-        safe_kubectl_apply(os.path.join(out_deploy_yaml_path,
-                                        "mindie_ms_coordinator.yaml"), deploy_config[CONFIG_JOB_ID])
-        safe_kubectl_apply(os.path.join(out_deploy_yaml_path,
-                                        "mindie_ms_controller.yaml"), deploy_config[CONFIG_JOB_ID])
+        safe_kubectl_apply(
+            os.path.join(out_deploy_yaml_path, "mindie_ms_coordinator.yaml"),
+            deploy_config[CONFIG_JOB_ID],
+        )
+        safe_kubectl_apply(
+            os.path.join(out_deploy_yaml_path, "mindie_ms_controller.yaml"),
+            deploy_config[CONFIG_JOB_ID],
+        )
         logging.info("Starting to execute kubectl create server")
         distributed_server_deploy(deploy_config, out_conf_path, out_deploy_yaml_path)
     else:
         exec_cm_elastic_kubectl(deploy_config, out_path)
         logging.info("Starting to execute kubectl elastic server")
-        elastic_distributed_server_deploy(deploy_config, out_conf_path, out_deploy_yaml_path)
+        elastic_distributed_server_deploy(
+            deploy_config, out_conf_path, out_deploy_yaml_path
+        )
         refresh_user_config_json(user_config_path, model_id)
         logging.info("Elastic server deploy finished. Return directly.")
         return
     refresh_user_config_json(user_config_path, model_id)
     logging.info("Starting to generate global ranktable")
     ext = dict()
-    ext['is_acjob'] = 'true'
-    if deploy_config["decode_distribute_enable"] != deploy_config["prefill_distribute_enable"]:
+    ext["is_acjob"] = "true"
+    if (
+        deploy_config["decode_distribute_enable"]
+        != deploy_config["prefill_distribute_enable"]
+    ):
         ext[P_DEPLOY_SERVER] = str(deploy_config["prefill_distribute_enable"])
         ext[D_DEPLOY_SERVER] = str(deploy_config["decode_distribute_enable"])
     else:
         ext[P_DEPLOY_SERVER] = PREFILL_DEPLOY
         ext[D_DEPLOY_SERVER] = DECODE_DEPLOY
-    ext['namespace'] = deploy_config[CONFIG_JOB_ID]
+    ext["namespace"] = deploy_config[CONFIG_JOB_ID]
     p_instance_total, d_instance_total = obtain_server_instance_total(deploy_config)
-    ext["coordinator_backup_enable"] = deploy_config.get(COORDINATOR_BACKUP_CFG, {}).get(COORDINATOR_BACKUP_SW, False)
-    ext["controller_backup_enable"] = deploy_config.get(CONTROLLER_BACKUP_CFG, {}).get(CONTROLLER_BACKUP_SW, False)
+    ext["coordinator_backup_enable"] = deploy_config.get(
+        COORDINATOR_BACKUP_CFG, {}
+    ).get(COORDINATOR_BACKUP_SW, False)
+    ext["controller_backup_enable"] = deploy_config.get(CONTROLLER_BACKUP_CFG, {}).get(
+        CONTROLLER_BACKUP_SW, False
+    )
     generate_global_ranktable(False, p_instance_total, d_instance_total, True, ext)
 
-    annotate_cmd = (f"kubectl annotate pods --all -n {deploy_config[CONFIG_JOB_ID]} "
-                    "config-update=update-global-ranktable --overwrite --all")
+    annotate_cmd = (
+        f"kubectl annotate pods --all -n {deploy_config[CONFIG_JOB_ID]} "
+        "config-update=update-global-ranktable --overwrite --all"
+    )
     if not safe_exec_cmd(annotate_cmd, False):
-        logging.warning("update annotate failed, which may increase the delay for ranktable update")
+        logging.warning(
+            "update annotate failed, which may increase the delay for ranktable update"
+        )
     logging.info("End to generate global ranktable")
 
 
@@ -1431,43 +1767,68 @@ def distributed_server_deploy(config_dict, out_conf_path, out_deploy_yaml_path):
     job_id = config_dict[CONFIG_JOB_ID]
     for index in range(config_dict[P_INSTANCES_NUM]):
         # 使用安全的函数替代直接拼接命令
-        safe_kubectl_delete(os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id)
+        safe_kubectl_delete(
+            os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id
+        )
         # 删除旧的configmap
         configmap_name = f"mindie-server-p{index}-config"
         exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
         # 创建configmap
         config_file = os.path.join(out_conf_path, "config_p.json")
-        safe_kubectl_create_configmap(configmap_name, from_file=f"config.json={config_file}", namespace=job_id)
+        safe_kubectl_create_configmap(
+            configmap_name, from_file=f"config.json={config_file}", namespace=job_id
+        )
         # 应用YAML文件
-        safe_kubectl_apply(os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id)
+        safe_kubectl_apply(
+            os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id
+        )
     for index in range(config_dict[D_INSTANCES_NUM]):
         # 使用安全的函数替代直接拼接命令
-        safe_kubectl_delete(os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id)
+        safe_kubectl_delete(
+            os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id
+        )
         # 删除旧的configmap
         configmap_name = f"mindie-server-d{index}-config"
         exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
         # 创建configmap
         config_file = os.path.join(out_conf_path, "config_d.json")
-        safe_kubectl_create_configmap(configmap_name, from_file=f"config.json={config_file}", namespace=job_id)
+        safe_kubectl_create_configmap(
+            configmap_name, from_file=f"config.json={config_file}", namespace=job_id
+        )
         # 应用YAML文件
-        safe_kubectl_apply(os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id)
+        safe_kubectl_apply(
+            os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id
+        )
 
 
 def exec_all_kubectl_singer(config_dict, out_path):
     job_id = config_dict[CONFIG_JOB_ID]
-    out_conf_path = os.path.join(out_path, 'conf')
+    out_conf_path = os.path.join(out_path, "conf")
     # 创建configmaps
-    safe_kubectl_create_configmap("common-env", from_literal="MINDIE_USER_HOME_PATH=/usr/local", namespace=job_id)
-    safe_kubectl_create_configmap("boot-bash-script", from_file="./boot_helper/boot.sh", namespace=job_id)
-    safe_kubectl_create_configmap("config-file-path", from_file=out_conf_path, namespace=job_id)
-    safe_kubectl_create_configmap("python-script-gen-config-single-container",
-                                  from_file="./boot_helper/gen_config_single_container.py", namespace=job_id)
+    safe_kubectl_create_configmap(
+        "common-env", from_literal="MINDIE_USER_HOME_PATH=/usr/local", namespace=job_id
+    )
+    safe_kubectl_create_configmap(
+        "boot-bash-script", from_file="./boot_helper/boot.sh", namespace=job_id
+    )
+    safe_kubectl_create_configmap(
+        "config-file-path", from_file=out_conf_path, namespace=job_id
+    )
+    safe_kubectl_create_configmap(
+        "python-script-gen-config-single-container",
+        from_file="./boot_helper/gen_config_single_container.py",
+        namespace=job_id,
+    )
     # 应用YAML文件
-    yaml_file = os.path.join(out_conf_path, "deployment", "mindie_service_single_container.yaml")
+    yaml_file = os.path.join(
+        out_conf_path, "deployment", "mindie_service_single_container.yaml"
+    )
     safe_kubectl_apply(yaml_file, job_id)
 
 
-def assign_cert_files(ms_tls_config, deploy_config_tls_config, cert_type, is_controller=True):
+def assign_cert_files(
+    ms_tls_config, deploy_config_tls_config, cert_type, is_controller=True
+):
     """
     assign cert file config by deploy_config
     :param ms_tls_config: ms config dict
@@ -1476,9 +1837,11 @@ def assign_cert_files(ms_tls_config, deploy_config_tls_config, cert_type, is_con
     :return: none
     """
     enable = deploy_config_tls_config[TLS_ENABLE]
-    if cert_type not in ['infer', 'management', 'ccae', 'cluster', 'etcd_server']:
-        logging.info("Unsupported cert type, only 'infer', 'management', 'ccae', 'clusterd', 'etcd_server' supported")
-    type_key = cert_type + '_tls_items'
+    if cert_type not in ["infer", "management", "ccae", "cluster", "etcd_server"]:
+        logging.info(
+            "Unsupported cert type, only 'infer', 'management', 'ccae', 'clusterd', 'etcd_server' supported"
+        )
+    type_key = cert_type + "_tls_items"
     if enable is not False:
         ms_tls_config[CA_CERT] = deploy_config_tls_config[type_key][CA_CERT]
         ms_tls_config[TLS_CERT] = deploy_config_tls_config[type_key][TLS_CERT]
@@ -1489,42 +1852,87 @@ def assign_cert_files(ms_tls_config, deploy_config_tls_config, cert_type, is_con
 
 def update_controller_tls_info(modify_result_dict, deploy_config):
     if deploy_config[TLS_CONFIG][TLS_ENABLE] is None:
-        modify_result_dict[TLS_CONFIG]["request_coordinator_tls_enable"] = \
+        modify_result_dict[TLS_CONFIG]["request_coordinator_tls_enable"] = (
             deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["http_server_tls_enable"] = deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][CLUSTER_TLS_ENABLE] = deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][CCAE_TLS_ENABLE] = deploy_config[TLS_CONFIG][CCAE_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE]
+        )
+        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][MANAGEMENT_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["http_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][MANAGEMENT_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG][CLUSTER_TLS_ENABLE] = deploy_config[TLS_CONFIG][
+            MANAGEMENT_TLS_ENABLE
+        ]
+        modify_result_dict[TLS_CONFIG][CCAE_TLS_ENABLE] = deploy_config[TLS_CONFIG][
+            CCAE_TLS_ENABLE
+        ]
+        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[
+            TLS_CONFIG
+        ][ETCD_SERVER_TLS_ENABLE]
     else:
-        modify_result_dict[TLS_CONFIG]["request_coordinator_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["http_server_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][CLUSTER_TLS_ENABLE] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][CCAE_TLS_ENABLE] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["alarm_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["request_coordinator_tls_enable"] = (
+            deploy_config[TLS_CONFIG][TLS_ENABLE]
+        )
+        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["http_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG][CLUSTER_TLS_ENABLE] = deploy_config[TLS_CONFIG][
+            TLS_ENABLE
+        ]
+        modify_result_dict[TLS_CONFIG][CCAE_TLS_ENABLE] = deploy_config[TLS_CONFIG][
+            TLS_ENABLE
+        ]
+        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["alarm_tls_enable"] = deploy_config[TLS_CONFIG][
+            TLS_ENABLE
+        ]
 
     # assign request coordinator TLS
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["request_coordinator_tls_items"],
-                      deploy_config[TLS_CONFIG], MANAGEMENT)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["request_coordinator_tls_items"],
+        deploy_config[TLS_CONFIG],
+        MANAGEMENT,
+    )
     # assign request server TLS
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["request_server_tls_items"],
-                      deploy_config[TLS_CONFIG], MANAGEMENT)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["request_server_tls_items"],
+        deploy_config[TLS_CONFIG],
+        MANAGEMENT,
+    )
     # assign request http
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["http_server_tls_items"],
-                      deploy_config[TLS_CONFIG], MANAGEMENT)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["http_server_tls_items"],
+        deploy_config[TLS_CONFIG],
+        MANAGEMENT,
+    )
     # assign clusterD tls
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["cluster_tls_items"],
-                      deploy_config[TLS_CONFIG], "cluster")
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["cluster_tls_items"],
+        deploy_config[TLS_CONFIG],
+        "cluster",
+    )
     # assign ccae tls
     if CCAE_TLS_ITEMS in deploy_config[TLS_CONFIG]:
-        modify_result_dict[TLS_CONFIG][CCAE_TLS_ITEMS] = deploy_config[TLS_CONFIG][CCAE_TLS_ITEMS]
-        assign_cert_files(modify_result_dict[TLS_CONFIG][CCAE_TLS_ITEMS],
-                          deploy_config[TLS_CONFIG], "ccae")
+        modify_result_dict[TLS_CONFIG][CCAE_TLS_ITEMS] = deploy_config[TLS_CONFIG][
+            CCAE_TLS_ITEMS
+        ]
+        assign_cert_files(
+            modify_result_dict[TLS_CONFIG][CCAE_TLS_ITEMS],
+            deploy_config[TLS_CONFIG],
+            "ccae",
+        )
     if ETCD_TLS_ITEMS in deploy_config[TLS_CONFIG]:
-        assign_cert_files(modify_result_dict[TLS_CONFIG][ETCD_TLS_ITEMS],
-                          deploy_config[TLS_CONFIG], "etcd_server")
+        assign_cert_files(
+            modify_result_dict[TLS_CONFIG][ETCD_TLS_ITEMS],
+            deploy_config[TLS_CONFIG],
+            "etcd_server",
+        )
 
     return modify_result_dict
 
@@ -1538,37 +1946,83 @@ def modify_controller_json(modify_config, ms_controller_json, deploy_config):
 
 def update_coordinator_tls_info(modify_result_dict, deploy_config):
     if deploy_config[TLS_CONFIG][TLS_ENABLE] is None:
-        modify_result_dict[TLS_CONFIG]["controller_server_tls_enable"] = deploy_config[TLS_CONFIG][INFER_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[TLS_CONFIG][INFER_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["mindie_client_tls_enable"] = deploy_config[TLS_CONFIG][INFER_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["mindie_mangment_tls_enable"] = deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["controller_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][INFER_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][INFER_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["mindie_client_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][INFER_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["mindie_mangment_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][MANAGEMENT_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[
+            TLS_CONFIG
+        ][ETCD_SERVER_TLS_ENABLE]
     else:
-        modify_result_dict[TLS_CONFIG]["controller_server_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["mindie_client_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["mindie_mangment_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["alarm_client_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["status_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["external_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[TLS_CONFIG][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["controller_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["request_server_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["mindie_client_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["mindie_mangment_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["alarm_client_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["status_tls_enable"] = deploy_config[TLS_CONFIG][
+            TLS_ENABLE
+        ]
+        modify_result_dict[TLS_CONFIG]["external_tls_enable"] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG][ETCD_SERVER_TLS_ENABLE] = deploy_config[
+            TLS_CONFIG
+        ][TLS_ENABLE]
 
     # assign request controller TLS
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["controller_server_tls_items"],
-                      deploy_config[TLS_CONFIG], "management", is_controller=False)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["controller_server_tls_items"],
+        deploy_config[TLS_CONFIG],
+        "management",
+        is_controller=False,
+    )
     # assign request server TLS
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["request_server_tls_items"],
-                      deploy_config[TLS_CONFIG], "infer", is_controller=False)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["request_server_tls_items"],
+        deploy_config[TLS_CONFIG],
+        "infer",
+        is_controller=False,
+    )
     # assign client tls
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["mindie_client_tls_items"],
-                      deploy_config[TLS_CONFIG], "infer", is_controller=False)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["mindie_client_tls_items"],
+        deploy_config[TLS_CONFIG],
+        "infer",
+        is_controller=False,
+    )
     # assign management tls
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["mindie_mangment_tls_items"],
-                      deploy_config[TLS_CONFIG], "management", is_controller=False)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["mindie_mangment_tls_items"],
+        deploy_config[TLS_CONFIG],
+        "management",
+        is_controller=False,
+    )
 
     if ETCD_TLS_ITEMS in deploy_config[TLS_CONFIG]:
-        assign_cert_files(modify_result_dict[TLS_CONFIG][ETCD_TLS_ITEMS],
-                          deploy_config[TLS_CONFIG], "etcd_server", is_controller=False)
+        assign_cert_files(
+            modify_result_dict[TLS_CONFIG][ETCD_TLS_ITEMS],
+            deploy_config[TLS_CONFIG],
+            "etcd_server",
+            is_controller=False,
+        )
     return modify_result_dict
 
 
@@ -1577,22 +2031,39 @@ def modify_coordinator_json(modify_config, ms_coordinator_json, deploy_config):
     modify_result_dict = update_dict(original_config, modify_config)
     modify_result_dict = update_coordinator_tls_info(modify_result_dict, deploy_config)
     if COORDINATOR_BACKUP_CFG in deploy_config:
-        modify_result_dict["backup_config"][COORDINATOR_BACKUP_SW] = \
-            deploy_config[COORDINATOR_BACKUP_CFG][COORDINATOR_BACKUP_SW]
+        modify_result_dict["backup_config"][COORDINATOR_BACKUP_SW] = deploy_config[
+            COORDINATOR_BACKUP_CFG
+        ][COORDINATOR_BACKUP_SW]
     return modify_result_dict
 
 
 def update_node_manager_tls_info(modify_result_dict, deploy_config):
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["server_tls_items"],
-                      deploy_config[TLS_CONFIG], "management", is_controller=False)
-    assign_cert_files(modify_result_dict[TLS_CONFIG]["client_tls_items"],
-                      deploy_config[TLS_CONFIG], "management", is_controller=False)
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["server_tls_items"],
+        deploy_config[TLS_CONFIG],
+        "management",
+        is_controller=False,
+    )
+    assign_cert_files(
+        modify_result_dict[TLS_CONFIG]["client_tls_items"],
+        deploy_config[TLS_CONFIG],
+        "management",
+        is_controller=False,
+    )
     if deploy_config[TLS_CONFIG][TLS_ENABLE] is None:
-        modify_result_dict[TLS_CONFIG]["server_tls_enable"] = deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["client_tls_enable"] = deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["server_tls_enable"] = deploy_config[TLS_CONFIG][
+            MANAGEMENT_TLS_ENABLE
+        ]
+        modify_result_dict[TLS_CONFIG]["client_tls_enable"] = deploy_config[TLS_CONFIG][
+            MANAGEMENT_TLS_ENABLE
+        ]
     else:
-        modify_result_dict[TLS_CONFIG]["server_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
-        modify_result_dict[TLS_CONFIG]["client_tls_enable"] = deploy_config[TLS_CONFIG][TLS_ENABLE]
+        modify_result_dict[TLS_CONFIG]["server_tls_enable"] = deploy_config[TLS_CONFIG][
+            TLS_ENABLE
+        ]
+        modify_result_dict[TLS_CONFIG]["client_tls_enable"] = deploy_config[TLS_CONFIG][
+            TLS_ENABLE
+        ]
     return modify_result_dict
 
 
@@ -1614,67 +2085,132 @@ def get_crl_files(path):
 def update_server_tls_info(modify_result_dict, deploy_config):
     # assign infer TLS
     key = "infer_tls_items"
-    modify_result_dict[SERVER_CONFIG]["tlsCaPath"] = get_path_with_separator(deploy_config[TLS_CONFIG][key][CA_CERT])
-    modify_result_dict[SERVER_CONFIG]["tlsCaFile"] = [os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])]
-    modify_result_dict[SERVER_CONFIG]["tlsCert"] = deploy_config[TLS_CONFIG][key][TLS_CERT]
+    modify_result_dict[SERVER_CONFIG]["tlsCaPath"] = get_path_with_separator(
+        deploy_config[TLS_CONFIG][key][CA_CERT]
+    )
+    modify_result_dict[SERVER_CONFIG]["tlsCaFile"] = [
+        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])
+    ]
+    modify_result_dict[SERVER_CONFIG]["tlsCert"] = deploy_config[TLS_CONFIG][key][
+        TLS_CERT
+    ]
     modify_result_dict[SERVER_CONFIG]["tlsPk"] = deploy_config[TLS_CONFIG][key][TLS_KEY]
-    modify_result_dict[SERVER_CONFIG]["tlsPkPwd"] = deploy_config[TLS_CONFIG][key][TLS_PASSWD]
-    modify_result_dict[SERVER_CONFIG]["tlsCrlPath"] = get_path_with_separator(deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[SERVER_CONFIG]["tlsCrlFiles"] = get_crl_files(deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[SERVER_CONFIG]["httpsEnabled"] = deploy_config[TLS_CONFIG][TLS_ENABLE] \
-        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None else deploy_config[TLS_CONFIG][INFER_TLS_ENABLE]
+    modify_result_dict[SERVER_CONFIG]["tlsPkPwd"] = deploy_config[TLS_CONFIG][key][
+        TLS_PASSWD
+    ]
+    modify_result_dict[SERVER_CONFIG]["tlsCrlPath"] = get_path_with_separator(
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[SERVER_CONFIG]["tlsCrlFiles"] = get_crl_files(
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[SERVER_CONFIG]["httpsEnabled"] = (
+        deploy_config[TLS_CONFIG][TLS_ENABLE]
+        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None
+        else deploy_config[TLS_CONFIG][INFER_TLS_ENABLE]
+    )
     # assign management TLS
     key = MANAGEMENT_TLS_ITEMS
     modify_result_dict[SERVER_CONFIG]["managementTlsCaPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][CA_CERT])
+        deploy_config[TLS_CONFIG][key][CA_CERT]
+    )
     modify_result_dict[SERVER_CONFIG]["managementTlsCaFile"] = [
-        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])]
-    modify_result_dict[SERVER_CONFIG]["managementTlsCert"] = deploy_config[TLS_CONFIG][key][TLS_CERT]
-    modify_result_dict[SERVER_CONFIG]["managementTlsPk"] = deploy_config[TLS_CONFIG][key][TLS_KEY]
-    modify_result_dict[SERVER_CONFIG]["managementTlsPkPwd"] = deploy_config[TLS_CONFIG][key][TLS_PASSWD]
+        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])
+    ]
+    modify_result_dict[SERVER_CONFIG]["managementTlsCert"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_CERT]
+    modify_result_dict[SERVER_CONFIG]["managementTlsPk"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_KEY]
+    modify_result_dict[SERVER_CONFIG]["managementTlsPkPwd"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_PASSWD]
     modify_result_dict[SERVER_CONFIG]["managementTlsCrlPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[SERVER_CONFIG]["managementTlsCrlFiles"] = get_crl_files(deploy_config[TLS_CONFIG][key][TLS_CRL])
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[SERVER_CONFIG]["managementTlsCrlFiles"] = get_crl_files(
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
     # assign metrics TLS
     key = "metrics_tls_items"
     modify_result_dict[SERVER_CONFIG]["metricsTlsCaPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][CA_CERT])
+        deploy_config[TLS_CONFIG][key][CA_CERT]
+    )
     modify_result_dict[SERVER_CONFIG]["metricsTlsCaFile"] = [
-        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])]
-    modify_result_dict[SERVER_CONFIG]["metricsTlsCert"] = deploy_config[TLS_CONFIG][key][TLS_CERT]
-    modify_result_dict[SERVER_CONFIG]["metricsTlsPk"] = deploy_config[TLS_CONFIG][key][TLS_KEY]
-    modify_result_dict[SERVER_CONFIG]["metricsTlsPkPwd"] = deploy_config[TLS_CONFIG][key][TLS_PASSWD]
+        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])
+    ]
+    modify_result_dict[SERVER_CONFIG]["metricsTlsCert"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_CERT]
+    modify_result_dict[SERVER_CONFIG]["metricsTlsPk"] = deploy_config[TLS_CONFIG][key][
+        TLS_KEY
+    ]
+    modify_result_dict[SERVER_CONFIG]["metricsTlsPkPwd"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_PASSWD]
     modify_result_dict[SERVER_CONFIG]["metricsTlsCrlPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[SERVER_CONFIG]["metricsTlsCrlFiles"] = get_crl_files(deploy_config[TLS_CONFIG][key][TLS_CRL])
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[SERVER_CONFIG]["metricsTlsCrlFiles"] = get_crl_files(
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
     # internal tls
     key = MANAGEMENT_TLS_ITEMS
     modify_result_dict[SERVER_CONFIG]["interCommTlsCaPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][CA_CERT])
+        deploy_config[TLS_CONFIG][key][CA_CERT]
+    )
     modify_result_dict[SERVER_CONFIG]["interCommTlsCaFiles"] = [
-        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])]
-    modify_result_dict[SERVER_CONFIG]["interCommTlsCert"] = deploy_config[TLS_CONFIG][key][TLS_CERT]
-    modify_result_dict[SERVER_CONFIG]["interCommPk"] = deploy_config[TLS_CONFIG][key][TLS_KEY]
-    modify_result_dict[SERVER_CONFIG]["interCommPkPwd"] = deploy_config[TLS_CONFIG][key][TLS_PASSWD]
+        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])
+    ]
+    modify_result_dict[SERVER_CONFIG]["interCommTlsCert"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_CERT]
+    modify_result_dict[SERVER_CONFIG]["interCommPk"] = deploy_config[TLS_CONFIG][key][
+        TLS_KEY
+    ]
+    modify_result_dict[SERVER_CONFIG]["interCommPkPwd"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_PASSWD]
     modify_result_dict[SERVER_CONFIG]["interCommTlsCrlPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[SERVER_CONFIG]["interCommTlsCrlFiles"] = get_crl_files(deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[SERVER_CONFIG]["interCommTLSEnabled"] = deploy_config[TLS_CONFIG][TLS_ENABLE] \
-        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None else deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[SERVER_CONFIG]["interCommTlsCrlFiles"] = get_crl_files(
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[SERVER_CONFIG]["interCommTLSEnabled"] = (
+        deploy_config[TLS_CONFIG][TLS_ENABLE]
+        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None
+        else deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
+    )
     # grpc
     key = MANAGEMENT_TLS_ITEMS
     modify_result_dict[BACKEND_CONFIG]["interNodeTlsCaPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][CA_CERT])
+        deploy_config[TLS_CONFIG][key][CA_CERT]
+    )
     modify_result_dict[BACKEND_CONFIG]["interNodeTlsCaFiles"] = [
-        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])]
-    modify_result_dict[BACKEND_CONFIG]["interNodeTlsCert"] = deploy_config[TLS_CONFIG][key][TLS_CERT]
-    modify_result_dict[BACKEND_CONFIG]["interNodeTlsPk"] = deploy_config[TLS_CONFIG][key][TLS_KEY]
-    modify_result_dict[BACKEND_CONFIG]["interNodeTlsPkPwd"] = deploy_config[TLS_CONFIG][key][TLS_PASSWD]
+        os.path.basename(deploy_config[TLS_CONFIG][key][CA_CERT])
+    ]
+    modify_result_dict[BACKEND_CONFIG]["interNodeTlsCert"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_CERT]
+    modify_result_dict[BACKEND_CONFIG]["interNodeTlsPk"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_KEY]
+    modify_result_dict[BACKEND_CONFIG]["interNodeTlsPkPwd"] = deploy_config[TLS_CONFIG][
+        key
+    ][TLS_PASSWD]
     modify_result_dict[BACKEND_CONFIG]["interNodeTlsCrlPath"] = get_path_with_separator(
-        deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[BACKEND_CONFIG]["interNodeTlsCrlFiles"] = get_crl_files(deploy_config[TLS_CONFIG][key][TLS_CRL])
-    modify_result_dict[BACKEND_CONFIG]["interNodeTLSEnabled"] = deploy_config[TLS_CONFIG][TLS_ENABLE] \
-        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None else deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[BACKEND_CONFIG]["interNodeTlsCrlFiles"] = get_crl_files(
+        deploy_config[TLS_CONFIG][key][TLS_CRL]
+    )
+    modify_result_dict[BACKEND_CONFIG]["interNodeTLSEnabled"] = (
+        deploy_config[TLS_CONFIG][TLS_ENABLE]
+        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None
+        else deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
+    )
 
 
 def set_max_iter_times(ms_config_p_json, ms_config_d_json):
@@ -1685,7 +2221,9 @@ def set_max_iter_times(ms_config_p_json, ms_config_d_json):
     p_schedule_config = p_backend_config.get("ScheduleConfig", {})
 
     if MAX_ITER_TIMES in p_schedule_config:
-        logging.warning("The value of maxIterTimes in node P will be overwritten by that of node D!")
+        logging.warning(
+            "The value of maxIterTimes in node P will be overwritten by that of node D!"
+        )
 
     if MAX_ITER_TIMES in d_schedule_config:
         p_schedule_config[MAX_ITER_TIMES] = d_schedule_config[MAX_ITER_TIMES]
@@ -1693,7 +2231,9 @@ def set_max_iter_times(ms_config_p_json, ms_config_d_json):
         logging.warning("Using default value of maxIterTimes")
 
 
-def modify_config_p_json(modify_config, ms_config_p_json, ms_config_d_json, deploy_config):
+def modify_config_p_json(
+    modify_config, ms_config_p_json, ms_config_d_json, deploy_config
+):
     original_config = read_json(ms_config_p_json)
     modify_result_dict = update_dict(original_config, modify_config)
     update_server_tls_info(modify_result_dict, deploy_config)
@@ -1714,10 +2254,14 @@ def modify_config_d_json(modify_config, ms_config_d_json, deploy_config):
 def modify_http_client_json(modify_config, ms_client_ctl_json, out_json, deploy_config):
     original_config = read_json(ms_client_ctl_json)
     modify_result_dict = update_dict(original_config, modify_config)
-    assign_cert_files(modify_result_dict["cert"],
-                      deploy_config[TLS_CONFIG], "management")
-    modify_result_dict[TLS_ENABLE] = deploy_config[TLS_CONFIG][TLS_ENABLE] \
-        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None else deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
+    assign_cert_files(
+        modify_result_dict["cert"], deploy_config[TLS_CONFIG], "management"
+    )
+    modify_result_dict[TLS_ENABLE] = (
+        deploy_config[TLS_CONFIG][TLS_ENABLE]
+        if deploy_config[TLS_CONFIG][TLS_ENABLE] is not None
+        else deploy_config[TLS_CONFIG][MANAGEMENT_TLS_ENABLE]
+    )
     write_json_data(modify_result_dict, out_json)
 
 
@@ -1727,7 +2271,9 @@ def get_config_model_name(server_config_path, singer_server_config_path):
     except OSError as reason:
         logging.info(str(reason))
         server_config = read_json(singer_server_config_path)
-    return server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0]["modelName"]
+    return server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][
+        "modelName"
+    ]
 
 
 def parse_arguments():
@@ -1736,47 +2282,98 @@ def parse_arguments():
         "--user_config_path",
         type=str,
         default="./user_config.json",
-        help="Path of user config"
+        help="Path of user config",
     )
-    parser.add_argument('--conf_path', type=str, default='./conf', help="Path of conf")
-    parser.add_argument("--deploy_yaml_path", type=str, default='./deployment', help="Path of yaml")
-    parser.add_argument("--output_path", type=str, default="./output", help="Path of output")
+    parser.add_argument("--conf_path", type=str, default="./conf", help="Path of conf")
+    parser.add_argument(
+        "--deploy_yaml_path", type=str, default="./deployment", help="Path of yaml"
+    )
+    parser.add_argument(
+        "--output_path", type=str, default="./output", help="Path of output"
+    )
     return parser.parse_args()
 
 
-def update_ms_controller_config(controller_config, p_server_config, d_server_config, deploy_config):
-    temp_updated = update_json_value(controller_config, "multi_node_infer_config/p_node_config/tp_size",
-                                     p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][TP])
-    temp_updated = update_json_value(temp_updated, "multi_node_infer_config/p_node_config/dp_size",
-                                     p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][DP])
-    temp_updated = update_json_value(controller_config, "multi_node_infer_config/p_node_config/sp_size",
-                                     p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][SP])
-    temp_updated = update_json_value(controller_config, "multi_node_infer_config/p_node_config/cp_size",
-                                     p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][CP])
-    temp_updated = update_json_value(temp_updated, "multi_node_infer_config/p_node_config/node_machine_num",
-                                     deploy_config["single_p_instance_pod_num"])
-    temp_updated = update_json_value(temp_updated, "multi_node_infer_config/p_node_config/enable_dist_dp_server",
-                                     p_server_config[SERVER_CONFIG][DIST_DP_SERVER_ENABLED])
+def update_ms_controller_config(
+    controller_config, p_server_config, d_server_config, deploy_config
+):
+    temp_updated = update_json_value(
+        controller_config,
+        "multi_node_infer_config/p_node_config/tp_size",
+        p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][TP],
+    )
+    temp_updated = update_json_value(
+        temp_updated,
+        "multi_node_infer_config/p_node_config/dp_size",
+        p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][DP],
+    )
+    temp_updated = update_json_value(
+        controller_config,
+        "multi_node_infer_config/p_node_config/sp_size",
+        p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][SP],
+    )
+    temp_updated = update_json_value(
+        controller_config,
+        "multi_node_infer_config/p_node_config/cp_size",
+        p_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][CP],
+    )
+    temp_updated = update_json_value(
+        temp_updated,
+        "multi_node_infer_config/p_node_config/node_machine_num",
+        deploy_config["single_p_instance_pod_num"],
+    )
+    temp_updated = update_json_value(
+        temp_updated,
+        "multi_node_infer_config/p_node_config/enable_dist_dp_server",
+        p_server_config[SERVER_CONFIG][DIST_DP_SERVER_ENABLED],
+    )
 
-    temp_updated = update_json_value(temp_updated, "multi_node_infer_config/d_node_config/tp_size",
-                                     d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][TP])
-    temp_updated = update_json_value(temp_updated, "multi_node_infer_config/d_node_config/dp_size",
-                                     d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][DP])
-    temp_updated = update_json_value(controller_config, "multi_node_infer_config/d_node_config/sp_size",
-                                     d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][SP])
-    temp_updated = update_json_value(controller_config, "multi_node_infer_config/d_node_config/cp_size",
-                                     d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][CP])
-    temp_updated = update_json_value(temp_updated, "multi_node_infer_config/d_node_config/enable_dist_dp_server",
-                                     d_server_config[SERVER_CONFIG][DIST_DP_SERVER_ENABLED])
+    temp_updated = update_json_value(
+        temp_updated,
+        "multi_node_infer_config/d_node_config/tp_size",
+        d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][TP],
+    )
+    temp_updated = update_json_value(
+        temp_updated,
+        "multi_node_infer_config/d_node_config/dp_size",
+        d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][DP],
+    )
+    temp_updated = update_json_value(
+        controller_config,
+        "multi_node_infer_config/d_node_config/sp_size",
+        d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][SP],
+    )
+    temp_updated = update_json_value(
+        controller_config,
+        "multi_node_infer_config/d_node_config/cp_size",
+        d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][CP],
+    )
+    temp_updated = update_json_value(
+        temp_updated,
+        "multi_node_infer_config/d_node_config/enable_dist_dp_server",
+        d_server_config[SERVER_CONFIG][DIST_DP_SERVER_ENABLED],
+    )
     if d_server_config[SERVER_CONFIG][DIST_DP_SERVER_ENABLED]:
-        temp_updated = update_json_value(temp_updated, "multi_node_infer_config/d_node_config/node_machine_num",
-                                         d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][DP])
+        temp_updated = update_json_value(
+            temp_updated,
+            "multi_node_infer_config/d_node_config/node_machine_num",
+            d_server_config[BACKEND_CONFIG][MODEL_DEPLOY_CONFIG][MODEL_CONFIG][0][DP],
+        )
     else:
-        temp_updated = update_json_value(temp_updated, "multi_node_infer_config/d_node_config/node_machine_num",
-                                         deploy_config["single_d_instance_pod_num"])
-    if CONTROLLER_BACKUP_CFG in deploy_config and CONTROLLER_BACKUP_SW in deploy_config[CONTROLLER_BACKUP_CFG]:
-        temp_updated = update_json_value(temp_updated, "controller_backup_cfg/function_sw",
-                                         deploy_config[CONTROLLER_BACKUP_CFG][CONTROLLER_BACKUP_SW])
+        temp_updated = update_json_value(
+            temp_updated,
+            "multi_node_infer_config/d_node_config/node_machine_num",
+            deploy_config["single_d_instance_pod_num"],
+        )
+    if (
+        CONTROLLER_BACKUP_CFG in deploy_config
+        and CONTROLLER_BACKUP_SW in deploy_config[CONTROLLER_BACKUP_CFG]
+    ):
+        temp_updated = update_json_value(
+            temp_updated,
+            "controller_backup_cfg/function_sw",
+            deploy_config[CONTROLLER_BACKUP_CFG][CONTROLLER_BACKUP_SW],
+        )
     if FAULT_RECOVERY_FUNC in deploy_config:
         if FAULT_RECOVERY_FUNC in deploy_config:
             fault_recovery_dict = deploy_config[FAULT_RECOVERY_FUNC]
@@ -1792,8 +2389,9 @@ def update_ms_controller_config(controller_config, p_server_config, d_server_con
 def modify_controller_config(out_controller_config):
     out_p_server_config = read_json(ms_config_p_json_path)
     out_d_server_config = read_json(ms_config_d_json_path)
-    updated = update_ms_controller_config(out_controller_config, out_p_server_config, out_d_server_config,
-                                          deploy_config)
+    updated = update_ms_controller_config(
+        out_controller_config, out_p_server_config, out_d_server_config, deploy_config
+    )
     write_json_data(updated, ms_controller_json_path)
 
 
@@ -1808,23 +2406,27 @@ def save_elastic_scaling_config(config, output):
     for i in range(p_instances_num):
         group_dict = dict()
         group_dict[GROUP_LIST] = list()
-        server_count = (p_instances_num - i) * p_server_num + d_instances_num * d_server_num
+        server_count = (
+            p_instances_num - i
+        ) * p_server_num + d_instances_num * d_server_num
         group_dict["server_count"] = str(server_count)
         group0 = {
             "group_name": "group0",
             "group_num": str(p_instances_num - i),
-            "server_num_per_group": str(p_server_num)
+            "server_num_per_group": str(p_server_num),
         }
         group_dict[GROUP_LIST].append(group0)
         group1 = {
             "group_name": "group1",
             "group_num": str(d_instances_num),
-            "server_num_per_group": str(d_server_num)
+            "server_num_per_group": str(d_server_num),
         }
         group_dict[GROUP_LIST].append(group1)
         elastic_scaling_list.append(group_dict)
     elastic_scaling["elastic_scaling_list"] = elastic_scaling_list
-    with safe_open(os.path.join(output, 'elastic_scaling.json'), 'w', permission_mode=0o640) as file:
+    with safe_open(
+        os.path.join(output, "elastic_scaling.json"), "w", permission_mode=0o640
+    ) as file:
         json.dump(elastic_scaling, file, indent=4)
 
 
@@ -1835,9 +2437,13 @@ def check_elastic_config(deploy_config):
     p_total = p_base + p_change
     d_total = d_base + d_change
     if p_total <= INSTANCE_NUM_ZERO:
-        raise ValueError(f"after elastic scaling, instance(p) must be greater than {INSTANCE_NUM_ZERO}")
+        raise ValueError(
+            f"after elastic scaling, instance(p) must be greater than {INSTANCE_NUM_ZERO}"
+        )
     if d_total <= INSTANCE_NUM_ZERO:
-        raise ValueError(f"after elastic scaling, instance(d) must be greater than {INSTANCE_NUM_ZERO}")
+        raise ValueError(
+            f"after elastic scaling, instance(d) must be greater than {INSTANCE_NUM_ZERO}"
+        )
 
 
 def is_first_run(deploy_config):
@@ -1857,23 +2463,31 @@ def obtain_server_instance_base_config(deploy_config):
     p_base = int(deploy_config[P_INSTANCES_NUM])
     d_base = int(deploy_config[D_INSTANCES_NUM])
     if p_base <= INSTANCE_NUM_ZERO or p_base > MAX_P_INSTANCES_NUM:
-        raise ValueError(f"{P_INSTANCES_NUM} must between ({INSTANCE_NUM_ZERO}, {MAX_P_INSTANCES_NUM}]")
+        raise ValueError(
+            f"{P_INSTANCES_NUM} must between ({INSTANCE_NUM_ZERO}, {MAX_P_INSTANCES_NUM}]"
+        )
     if d_base <= INSTANCE_NUM_ZERO or d_base > MAX_D_INSTANCES_NUM:
-        raise ValueError(f"{D_INSTANCES_NUM} must between ({INSTANCE_NUM_ZERO}, {MAX_D_INSTANCES_NUM}]")
+        raise ValueError(
+            f"{D_INSTANCES_NUM} must between ({INSTANCE_NUM_ZERO}, {MAX_D_INSTANCES_NUM}]"
+        )
     return p_base, d_base
 
 
 def obtain_server_elastic_config_p(deploy_config):
     p_change = int(deploy_config[ELASTIC_P_CHANGE])
     if p_change < MIN_ELASTIC_NUM or p_change > MAX_ELASTIC_NUM:
-        raise ValueError(f"{ELASTIC_P_CHANGE} must between [{MIN_ELASTIC_NUM}, {MAX_ELASTIC_NUM}]")
+        raise ValueError(
+            f"{ELASTIC_P_CHANGE} must between [{MIN_ELASTIC_NUM}, {MAX_ELASTIC_NUM}]"
+        )
     return p_change
 
 
 def obtain_server_elastic_config_d(deploy_config):
     d_change = int(deploy_config[ELASTIC_D_CHANGE])
     if d_change < MIN_ELASTIC_NUM or d_change > MAX_ELASTIC_NUM:
-        raise ValueError(f"{ELASTIC_D_CHANGE} must between [{MIN_ELASTIC_NUM}, {MAX_ELASTIC_NUM}]")
+        raise ValueError(
+            f"{ELASTIC_D_CHANGE} must between [{MIN_ELASTIC_NUM}, {MAX_ELASTIC_NUM}]"
+        )
     return d_change
 
 
@@ -1885,7 +2499,7 @@ def refresh_user_config_json(user_config_path, model_id):
     json_config[DEPLOY_CONFIG][MODEL_ID] = model_id
     json_config[DEPLOY_CONFIG][ELASTIC_P_CHANGE] = INSTANCE_NUM_ZERO
     json_config[DEPLOY_CONFIG][ELASTIC_D_CHANGE] = INSTANCE_NUM_ZERO
-    with safe_open(user_config_path, 'w', permission_mode=0o640) as file:
+    with safe_open(user_config_path, "w", permission_mode=0o640) as file:
         json.dump(json_config, file, indent=2)
     logging.info("Refresh user_config success.")
 
@@ -1902,8 +2516,7 @@ def obtain_model_id(deploy_config):
         return config_model_id
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     args = parse_arguments()
 
     input_conf_root_path = args.conf_path
@@ -1917,35 +2530,55 @@ if __name__ == '__main__':
     if not os.path.exists(os.path.join(output_root_path, "deployment")):
         os.makedirs(os.path.join(output_root_path, "deployment"), mode=0o750)
     if not os.path.exists(user_config_path):
-        raise FileNotFoundError(f"Configuration file not found at: '{user_config_path}'."
-                                f"Please verify the path or provide a valid config file.")
+        raise FileNotFoundError(
+            f"Configuration file not found at: '{user_config_path}'."
+            f"Please verify the path or provide a valid config file."
+        )
     else:
-        logging.info(f"Starting service deployment using config file path: {user_config_path}.")
+        logging.info(
+            f"Starting service deployment using config file path: {user_config_path}."
+        )
 
-    controller_input_yaml = os.path.join(deploy_yaml_root_path, 'controller_init.yaml')
-    controller_output_yaml = os.path.join(output_root_path, 'deployment', 'mindie_ms_controller.yaml')
-    coordinator_input_yaml = os.path.join(deploy_yaml_root_path, 'coordinator_init.yaml')
-    coordinator_output_yaml = os.path.join(output_root_path, 'deployment', 'mindie_ms_coordinator.yaml')
-    server_input_yaml = os.path.join(deploy_yaml_root_path, 'server_init.yaml')
-    server_output_yaml = os.path.join(output_root_path, 'deployment', 'mindie_server')
-    singer_container_input_yaml = os.path.join(deploy_yaml_root_path, 'single_container_init.yaml')
-    singer_container_output_yaml = os.path.join(output_root_path, 'deployment', 'mindie_service_single_container.yaml')
-    ms_controller_json_path = os.path.join(output_root_path, 'conf', 'ms_controller.json')
-    ms_coordinator_json_path = os.path.join(output_root_path, 'conf', 'ms_coordinator.json')
-    ms_config_p_json_path = os.path.join(output_root_path, 'conf', 'config_p.json')
-    ms_config_d_json_path = os.path.join(output_root_path, 'conf', 'config_d.json')
-    ms_client_ctl_json = os.path.join(output_root_path, 'conf', 'http_client_ctl.json')
-    server_config_path = os.path.join(output_root_path, 'conf', 'config.json')
-    ms_node_manager_json_path = os.path.join(output_root_path, 'conf', 'node_manager.json')
+    controller_input_yaml = os.path.join(deploy_yaml_root_path, "controller_init.yaml")
+    controller_output_yaml = os.path.join(
+        output_root_path, "deployment", "mindie_ms_controller.yaml"
+    )
+    coordinator_input_yaml = os.path.join(
+        deploy_yaml_root_path, "coordinator_init.yaml"
+    )
+    coordinator_output_yaml = os.path.join(
+        output_root_path, "deployment", "mindie_ms_coordinator.yaml"
+    )
+    server_input_yaml = os.path.join(deploy_yaml_root_path, "server_init.yaml")
+    server_output_yaml = os.path.join(output_root_path, "deployment", "mindie_server")
+    singer_container_input_yaml = os.path.join(
+        deploy_yaml_root_path, "single_container_init.yaml"
+    )
+    singer_container_output_yaml = os.path.join(
+        output_root_path, "deployment", "mindie_service_single_container.yaml"
+    )
+    ms_controller_json_path = os.path.join(
+        output_root_path, "conf", "ms_controller.json"
+    )
+    ms_coordinator_json_path = os.path.join(
+        output_root_path, "conf", "ms_coordinator.json"
+    )
+    ms_config_p_json_path = os.path.join(output_root_path, "conf", "config_p.json")
+    ms_config_d_json_path = os.path.join(output_root_path, "conf", "config_d.json")
+    ms_client_ctl_json = os.path.join(output_root_path, "conf", "http_client_ctl.json")
+    server_config_path = os.path.join(output_root_path, "conf", "config.json")
+    ms_node_manager_json_path = os.path.join(
+        output_root_path, "conf", "node_manager.json"
+    )
 
-    init_ms_controller_json = os.path.join(input_conf_root_path, 'ms_controller.json')
-    init_ms_coordinator_json = os.path.join(input_conf_root_path, 'ms_coordinator.json')
-    init_ms_config_p_json = os.path.join(input_conf_root_path, 'config_p.json')
-    init_ms_config_d_json = os.path.join(input_conf_root_path, 'config_d.json')
-    init_ms_client_ctl_json = os.path.join(input_conf_root_path, 'http_client_ctl.json')
-    init_server_config_path = os.path.join(input_conf_root_path, 'config.json')
-    init_ms_node_manager_json = os.path.join(input_conf_root_path, 'node_manager.json')
-    env_config_path = os.path.join(input_conf_root_path, 'mindie_env.json')
+    init_ms_controller_json = os.path.join(input_conf_root_path, "ms_controller.json")
+    init_ms_coordinator_json = os.path.join(input_conf_root_path, "ms_coordinator.json")
+    init_ms_config_p_json = os.path.join(input_conf_root_path, "config_p.json")
+    init_ms_config_d_json = os.path.join(input_conf_root_path, "config_d.json")
+    init_ms_client_ctl_json = os.path.join(input_conf_root_path, "http_client_ctl.json")
+    init_server_config_path = os.path.join(input_conf_root_path, "config.json")
+    init_ms_node_manager_json = os.path.join(input_conf_root_path, "node_manager.json")
+    env_config_path = os.path.join(input_conf_root_path, "mindie_env.json")
 
     json_config = read_json(user_config_path)
     validate_user_config(json_config)
@@ -1955,40 +2588,76 @@ if __name__ == '__main__':
     validate_identifier(deploy_config[CONFIG_JOB_ID], CONFIG_JOB_ID)
 
     if "mindie_env_path" in deploy_config:
-        env_config_path = validate_path_part(deploy_config["mindie_env_path"], "mindie_env_path")
+        env_config_path = validate_path_part(
+            deploy_config["mindie_env_path"], "mindie_env_path"
+        )
 
-    if not os.path.exists(os.path.join(os.getcwd(), "boot_helper", "server_prestop.sh")):
+    if not os.path.exists(
+        os.path.join(os.getcwd(), "boot_helper", "server_prestop.sh")
+    ):
         raise FileNotFoundError("server_prestop.sh not Found!")
 
-    if json_config["mindie_ms_controller_config"]["deploy_mode"] == "pd_disaggregation_single_container":
-        generator_yaml(singer_container_input_yaml, singer_container_output_yaml, user_config_path, False)
+    if (
+        json_config["mindie_ms_controller_config"]["deploy_mode"]
+        == "pd_disaggregation_single_container"
+    ):
+        generator_yaml(
+            singer_container_input_yaml,
+            singer_container_output_yaml,
+            user_config_path,
+            False,
+        )
         exec_all_kubectl_singer(deploy_config, output_root_path)
     else:
         check_elastic_config(deploy_config)
         env_config = read_json(env_config_path)
         env_config["MODEL_ID"] = obtain_model_id(deploy_config)
         save_elastic_scaling_config(deploy_config, output_root_path)
-        ms_controller_json = modify_controller_json(json_config["mindie_ms_controller_config"], init_ms_controller_json,
-                               deploy_config)
-        ms_coordinator_json = modify_coordinator_json(json_config["mindie_ms_coordinator_config"],
-                                init_ms_coordinator_json, deploy_config)
-        ms_config_p_json = modify_config_p_json(json_config["mindie_server_prefill_config"], init_ms_config_p_json,
-                             json_config["mindie_server_decode_config"], deploy_config)
-        ms_config_d_json = modify_config_d_json(json_config["mindie_server_decode_config"], init_ms_config_d_json,
-                             deploy_config)
-        ms_node_manager_json = modify_node_manager_json(init_ms_node_manager_json, deploy_config)
+        ms_controller_json = modify_controller_json(
+            json_config["mindie_ms_controller_config"],
+            init_ms_controller_json,
+            deploy_config,
+        )
+        ms_coordinator_json = modify_coordinator_json(
+            json_config["mindie_ms_coordinator_config"],
+            init_ms_coordinator_json,
+            deploy_config,
+        )
+        ms_config_p_json = modify_config_p_json(
+            json_config["mindie_server_prefill_config"],
+            init_ms_config_p_json,
+            json_config["mindie_server_decode_config"],
+            deploy_config,
+        )
+        ms_config_d_json = modify_config_d_json(
+            json_config["mindie_server_decode_config"],
+            init_ms_config_d_json,
+            deploy_config,
+        )
+        ms_node_manager_json = modify_node_manager_json(
+            init_ms_node_manager_json, deploy_config
+        )
 
         # 修改各组件依赖其他组件的端口
         if "controller_alarm_port" in ms_controller_json:
-            ms_coordinator_json["http_config"]["alarm_port"] = str(ms_controller_json["controller_alarm_port"])
-            ms_node_manager_json["controller_alarm_port"] = int(ms_controller_json["controller_alarm_port"])
+            ms_coordinator_json["http_config"]["alarm_port"] = str(
+                ms_controller_json["controller_alarm_port"]
+            )
+            ms_node_manager_json["controller_alarm_port"] = int(
+                ms_controller_json["controller_alarm_port"]
+            )
         if "node_manager_port" in ms_node_manager_json:
-            ms_controller_json["node_manager_port"] = int(ms_node_manager_json["node_manager_port"])
+            ms_controller_json["node_manager_port"] = int(
+                ms_node_manager_json["node_manager_port"]
+            )
         if "manage_port" in ms_coordinator_json["http_config"]:
-            ms_controller_json["mindie_ms_coordinator_port"] = int(ms_coordinator_json["http_config"]["manage_port"])
+            ms_controller_json["mindie_ms_coordinator_port"] = int(
+                ms_coordinator_json["http_config"]["manage_port"]
+            )
         if "external_port" in ms_coordinator_json["http_config"]:
             ms_controller_json["mindie_ms_coordinator_external_port"] = int(
-                ms_coordinator_json["http_config"]["external_port"])
+                ms_coordinator_json["http_config"]["external_port"]
+            )
 
         write_json_data(ms_controller_json, ms_controller_json_path)
         write_json_data(ms_coordinator_json, ms_coordinator_json_path)
@@ -1996,25 +2665,55 @@ if __name__ == '__main__':
         write_json_data(ms_config_p_json, ms_config_p_json_path)
         write_json_data(ms_config_d_json, ms_config_d_json_path)
 
-        http_json = json_config["http_client_ctl_config"] if "http_client_ctl_config" in json_config else dict()
-        modify_http_client_json(http_json, init_ms_client_ctl_json, ms_client_ctl_json,
-                                deploy_config)
+        http_json = (
+            json_config["http_client_ctl_config"]
+            if "http_client_ctl_config" in json_config
+            else dict()
+        )
+        modify_http_client_json(
+            http_json, init_ms_client_ctl_json, ms_client_ctl_json, deploy_config
+        )
         # 非跨机不区分
-        server_config = modify_config_p_json(json_config["mindie_server_prefill_config"], init_server_config_path,
-                             json_config["mindie_server_decode_config"], deploy_config)
+        server_config = modify_config_p_json(
+            json_config["mindie_server_prefill_config"],
+            init_server_config_path,
+            json_config["mindie_server_decode_config"],
+            deploy_config,
+        )
         write_json_data(server_config, server_config_path)
-        CONFIG_MODEL_NAME = get_config_model_name(ms_config_p_json_path, server_config_path)
+        CONFIG_MODEL_NAME = get_config_model_name(
+            ms_config_p_json_path, server_config_path
+        )
         out_controller_config = read_json(ms_controller_json_path)
         INIT_PORT = out_controller_config["initial_dist_server_port"]
         modify_controller_config(out_controller_config)
-        generator_yaml(controller_input_yaml, controller_output_yaml, user_config_path, True, env_config)
+        generator_yaml(
+            controller_input_yaml,
+            controller_output_yaml,
+            user_config_path,
+            True,
+            env_config,
+        )
 
         # Check coordinator memory config before generating YAML
         coordinator_yaml_data = load_yaml(coordinator_input_yaml, False)[0]
         check_coordinator_memory_config(coordinator_yaml_data, ms_coordinator_json_path)
 
-        generator_yaml(coordinator_input_yaml, coordinator_output_yaml, user_config_path, False, env_config)
-        generator_yaml(server_input_yaml, server_output_yaml, user_config_path, False, env_config)
-        exec_all_kubectl_multi(json_config["deploy_config"], output_root_path, user_config_path, env_config["MODEL_ID"])
+        generator_yaml(
+            coordinator_input_yaml,
+            coordinator_output_yaml,
+            user_config_path,
+            False,
+            env_config,
+        )
+        generator_yaml(
+            server_input_yaml, server_output_yaml, user_config_path, False, env_config
+        )
+        exec_all_kubectl_multi(
+            json_config["deploy_config"],
+            output_root_path,
+            user_config_path,
+            env_config["MODEL_ID"],
+        )
 
     logging.info("all deploy end.")
