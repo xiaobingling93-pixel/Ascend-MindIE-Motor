@@ -163,6 +163,7 @@ if [ $# -eq 0 ]; then
                 set_prefill_env
                 CURRENT_ROLE="prefill"
             fi
+            export MALLOC_CONF="background_thread:true,tcache_nslots_small_max:20,tcache_nslots_small_min:5,narenas:4,dirty_decay_ms:5000,muzzy_decay_ms:5000"
             node_manager "$exit_server_num" "$CURRENT_ROLE" &
             pid=$!
             echo "pull up $CURRENT_ROLE instance, number: $exit_server_num"
@@ -185,6 +186,7 @@ if [ $# -eq 0 ]; then
             if [ ! -n "$APP_TYPE" ]; then
                 mindie_llm_server --config-file "$CONFIG_DIR/config.json" &
             else
+                export MALLOC_CONF="background_thread:true,tcache_nslots_small_max:20,tcache_nslots_small_min:5,narenas:4,dirty_decay_ms:5000,muzzy_decay_ms:5000"
                 node_manager &
             fi
             pid=$!
