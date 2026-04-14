@@ -462,16 +462,20 @@ def safe_kubectl_apply(file_path, namespace=None):
     return safe_exec_cmd(cmd_parts)
 
 
-def safe_kubectl_delete(file_path, namespace=None):
+def safe_kubectl_delete(file_path, namespace=None, ignore_not_found=False):
     """
     安全的kubectl delete调用
     :param file_path: YAML文件路径
     :param namespace: 命名空间
+    :param ignore_not_found: 是否忽略未找到资源的错误
     :return: 命令执行结果
     """
     # 验证输入参数
     validated_file_path = validate_path_part(file_path, "file_path")
     cmd_parts = ["kubectl", "delete", "-f", validated_file_path]
+
+    if ignore_not_found:
+        cmd_parts.append("--ignore-not-found=true")
 
     if namespace:
         validated_namespace = validate_identifier(namespace, "namespace")
@@ -1648,10 +1652,13 @@ def elastic_distributed_server_deploy_p(
         for index in range(start_idx, start_idx + num_to_add):
             # 删除旧的configmap和YAML
             configmap_name = f"mindie-server-p{index}-config"
-            exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
+            exec_cmd(
+                f"kubectl delete configmap {configmap_name} -n {job_id} --ignore-not-found=true"
+            )
             safe_kubectl_delete(
                 os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"),
                 job_id,
+                ignore_not_found=True,
             )
             # 创建新的configmap
             config_file = os.path.join(out_conf_path, "config_p.json")
@@ -1687,10 +1694,13 @@ def elastic_distributed_server_deploy_d(
         for index in range(d_base, d_total):
             # 删除旧的configmap和YAML
             configmap_name = f"mindie-server-d{index}-config"
-            exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
+            exec_cmd(
+                f"kubectl delete configmap {configmap_name} -n {job_id} --ignore-not-found=true"
+            )
             safe_kubectl_delete(
                 os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"),
                 job_id,
+                ignore_not_found=True,
             )
             # 创建新的configmap
             config_file = os.path.join(out_conf_path, "config_d.json")
@@ -1767,38 +1777,36 @@ def distributed_server_deploy(config_dict, out_conf_path, out_deploy_yaml_path):
     job_id = config_dict[CONFIG_JOB_ID]
     for index in range(config_dict[P_INSTANCES_NUM]):
         # 使用安全的函数替代直接拼接命令
-        safe_kubectl_delete(
-            os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id
-        )
+        yaml_path = os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}")
+        safe_kubectl_delete(yaml_path, job_id, ignore_not_found=True)
         # 删除旧的configmap
         configmap_name = f"mindie-server-p{index}-config"
-        exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
+        exec_cmd(
+            f"kubectl delete configmap {configmap_name} -n {job_id} --ignore-not-found=true"
+        )
         # 创建configmap
         config_file = os.path.join(out_conf_path, "config_p.json")
         safe_kubectl_create_configmap(
             configmap_name, from_file=f"config.json={config_file}", namespace=job_id
         )
         # 应用YAML文件
-        safe_kubectl_apply(
-            os.path.join(out_deploy_yaml_path, f"mindie_server_p{index}{YAML}"), job_id
-        )
+        safe_kubectl_apply(yaml_path, job_id)
     for index in range(config_dict[D_INSTANCES_NUM]):
         # 使用安全的函数替代直接拼接命令
-        safe_kubectl_delete(
-            os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id
-        )
+        yaml_path = os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}")
+        safe_kubectl_delete(yaml_path, job_id, ignore_not_found=True)
         # 删除旧的configmap
         configmap_name = f"mindie-server-d{index}-config"
-        exec_cmd(f"kubectl delete configmap {configmap_name} -n {job_id}")
+        exec_cmd(
+            f"kubectl delete configmap {configmap_name} -n {job_id} --ignore-not-found=true"
+        )
         # 创建configmap
         config_file = os.path.join(out_conf_path, "config_d.json")
         safe_kubectl_create_configmap(
             configmap_name, from_file=f"config.json={config_file}", namespace=job_id
         )
         # 应用YAML文件
-        safe_kubectl_apply(
-            os.path.join(out_deploy_yaml_path, f"mindie_server_d{index}{YAML}"), job_id
-        )
+        safe_kubectl_apply(yaml_path, job_id)
 
 
 def exec_all_kubectl_singer(config_dict, out_path):

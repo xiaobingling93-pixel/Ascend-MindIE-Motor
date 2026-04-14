@@ -88,7 +88,7 @@ def generate_server_ranktable(namespace):
     deployment_label = output_from_kubectl(
         "kubectl get deployment mindie-server -n "
         + namespace
-        + " -o jsonpath='{.metadata.labels}'"
+        + " -o jsonpath='{.metadata.labels}' --ignore-not-found=true"
     )
     try:
         deployment_label_json_obj = json.loads(deployment_label)
