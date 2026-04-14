@@ -399,7 +399,7 @@
             # via -r requirements.in
         et-xmlfile==1.1.0
             # via openpyxl
-        filelock==3.16.1
+        filelock==3.20.1
             # via
             #   huggingface-hub
             #   icetk
