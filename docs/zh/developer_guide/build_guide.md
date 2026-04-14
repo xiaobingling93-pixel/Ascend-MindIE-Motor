@@ -50,7 +50,7 @@ MindIE镜像获取请参见[镜像安装方式](https://gitcode.com/Ascend/MindI
 6. 编译第三方依赖。
 
     ```bash
-    env -u LD_LIBRARY_PATH bash build/build.sh -d -3rd -b 3rd
+    env -u LD_LIBRARY_PATH bash build/build.sh -d 3rd -b 3rd
     ```
 
     - env -u *xxx*：表示在启动指定命令时移出环境变量*xxx*。
