@@ -20,7 +20,7 @@
 ## 🔍目录结构
 
 ```bash
-├── docs                                     # 项目文档                         
+├── docs                                     # 项目文档
 ├── mindie_motor                             # 服务框架总模块
 │   ├── python                               # Python封装与脚本
 │   ├── src                                  # 服务管理模块
@@ -34,7 +34,7 @@
 │   │   ├── test                             # 单元测试
 ├── module                                   # MindIE-LLM推理引擎模块
 ├── third_party                              # 第三方依赖
-├── README.md   
+├── README.md
 ```
 
 ## ⚡️版本说明
@@ -63,7 +63,7 @@
 
 版权所有© 2025 MindIE Project.
 
-您对"本文档"的复制、使用、修改及分发受知识共享（Creative Commmons）署名——相同方式共享4.0国际公共许可协议（以下简称"CC BY-SA 4.0"）的约束。为了方便用户理解，您可以通过访问[链接](https://creativecommons.org/licenses/by-sa/4.0/)了解CC BY-SA 4.0的概要（但不是替代）。CC BY-SA 4.0的完整协议内容您可以访问[链接](https://creativecommons.org/licenses/by-sa/4.0/legalcode)获取。
+您对"本文档"的复制、使用、修改及分发受知识共享（Creative Commons）署名——相同方式共享4.0国际公共许可协议（以下简称"CC BY-SA 4.0"）的约束。为了方便用户理解，您可以通过访问[链接](https://creativecommons.org/licenses/by-sa/4.0/)了解CC BY-SA 4.0的概要（但不是替代）。CC BY-SA 4.0的完整协议内容您可以访问[链接](https://creativecommons.org/licenses/by-sa/4.0/legalcode)获取。
 
 ## 📝贡献指南
 
@@ -81,7 +81,7 @@
    7. 代码检视：您需要根据评审意见修改代码，并重新提交更新。此流程可能涉及多轮迭代。
    8. 当您的PR获得足够数量的检视者批准后，Committer会进行最终审核。
    9. 审核和测试通过后，CI会将您的PR合并到项目的主干分支。
- 
+
 更多贡献相关文档请参见[贡献指南](./contributing.md)。
 
 ## 📝相关信息

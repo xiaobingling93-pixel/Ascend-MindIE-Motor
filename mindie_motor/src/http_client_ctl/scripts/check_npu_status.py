@@ -32,7 +32,7 @@ def __is_npu_health():
     if (os.path.exists(yaml_file) is False):
         return True
 
-    check_file_flag, _ = FileUtils.is_file_valid(yaml_file)
+    check_file_flag, _ = FileUtils.is_file_valid(yaml_file, 'r')
     if not check_file_flag:
         return False
     check_file_flag = FileUtils.is_symlink(yaml_file)

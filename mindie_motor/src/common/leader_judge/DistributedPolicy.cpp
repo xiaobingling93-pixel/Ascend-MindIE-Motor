@@ -1,32 +1,33 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
  * MindIE is licensed under Mulan PSL v2.
- * You can use this software according to the terms and conditions of the Mulan PSL v2.
- * You may obtain a copy of Mulan PSL v2 at:
+ * You can use this software according to the terms and conditions of the Mulan
+ * PSL v2. You may obtain a copy of Mulan PSL v2 at:
  *         http://license.coscl.org.cn/MulanPSL2
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
- * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
- * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
- * See the Mulan PSL v2 for more details.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY
+ * KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+ * NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE. See the
+ * Mulan PSL v2 for more details.
  */
 
+#include "DistributedPolicy.h"
+
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
 #include <sstream>
 #include <thread>
-#include <atomic>
+
 #include "ConfigParams.h"
-#include "KmcSecureString.h"
-#include "KmcDecryptor.h"
 #include "GrpcClusterClient.h"
-#include "DistributedPolicy.h"
+#include "KmcDecryptor.h"
+#include "KmcSecureString.h"
 
 namespace MINDIE {
 namespace MS {
 // 获取POD_NAMESPACE作为操作etcd的key前缀,如果要新增etcd的key,请以/开头,这样拼接后的key格式为/namespace/xx,是etcd中key的推荐格式
-std::string PrefixedByPodNamespace(const std::string &key)
-{
+std::string PrefixedByPodNamespace(const std::string& key) {
     const char* podNamespace = std::getenv("POD_NAMESPACE");
     // 环境变量未设置或未空,则不处理
     if (podNamespace == nullptr || std::strlen(podNamespace) == 0) {
@@ -45,9 +46,11 @@ EtcdDistributedLock::EtcdDistributedLock(const std::string& etcdAddr,
                                          EtcdTimeInfo etcdTimeInfo)
     : clientId(clientId),
       lockKey(PrefixedByPodNamespace(lockKey)),
+      etcdAddr_(etcdAddr),
+      tlsConfig_(tlsConfig),
       leaseTtl(etcdTimeInfo.staticLeaseTtl),
       etcdTimeInfo(etcdTimeInfo) {
-    InitializeEtcdClient(etcdAddr, tlsConfig);
+    InitializeEtcdClient();
 }
 
 // 新增构造函数（测试环境使用）
@@ -55,47 +58,39 @@ EtcdDistributedLock::EtcdDistributedLock(const std::string& etcdAddr,
 EtcdDistributedLock::EtcdDistributedLock(
     std::shared_ptr<etcdserverpb::KV::StubInterface> kvStub,
     std::shared_ptr<etcdserverpb::Lease::StubInterface> leaseStub,
-    std::string& lockKeyRef,
-    std::string& clientIdRef,
+    std::string& lockKeyRef, std::string& clientIdRef,
     EtcdTimeInfo etcdTimeInfoRef)
-    : leaseTtl(etcdTimeInfoRef.staticLeaseTtl),
-      etcdTimeInfo(etcdTimeInfoRef)
-{
-    kv_stub_ = std::static_pointer_cast<etcdserverpb::KV::StubInterface>(kvStub);
-    lease_stub_ = std::static_pointer_cast<etcdserverpb::Lease::StubInterface>(leaseStub);
+    : leaseTtl(etcdTimeInfoRef.staticLeaseTtl), etcdTimeInfo(etcdTimeInfoRef) {
+    kv_stub_ =
+        std::static_pointer_cast<etcdserverpb::KV::StubInterface>(kvStub);
+    lease_stub_ =
+        std::static_pointer_cast<etcdserverpb::Lease::StubInterface>(leaseStub);
 
     clientId = clientIdRef;
     lockKey = PrefixedByPodNamespace(lockKeyRef);
 }
 
-bool EtcdDistributedLock::IsLocked()
-{
-    return isLocked.load();
-}
+bool EtcdDistributedLock::IsLocked() { return isLocked.load(); }
 
-void EtcdDistributedLock::SetLock(bool flag)
-{
-    isLocked.store(flag);
-}
-#endif // UT_FLAG
+void EtcdDistributedLock::SetLock(bool flag) { isLocked.store(flag); }
+#endif  // UT_FLAG
 
-EtcdDistributedLock::~EtcdDistributedLock()
-{
-    Stop();
-}
+EtcdDistributedLock::~EtcdDistributedLock() { Stop(); }
 
-
-void EtcdDistributedLock::RegisterCallBack(std::function<void(bool)> callback)
-{
+void EtcdDistributedLock::RegisterCallBack(std::function<void(bool)> callback) {
     std::lock_guard<std::mutex> lock(cbMutex);
     callback_ = callback;
 }
 
-bool EtcdDistributedLock::AcquireLockOnce()
-{
+bool EtcdDistributedLock::AcquireLockOnce() {
     LOG_D("[LeaderAgent AcquireLockOnce] start lock once");
     if (isLocked.load()) {
         return true;
+    }
+
+    if (!EnsureConnection()) {
+        LOG_E("[AcquireLockOnce] Failed to ensure etcd connection");
+        return false;
     }
 
     if (!CreateLease()) {
@@ -119,8 +114,8 @@ bool EtcdDistributedLock::AcquireLockOnce()
     return true;
 }
 
-void EtcdDistributedLock::BuildLockTxnRequest(etcdserverpb::TxnRequest& txn_req)
-{
+void EtcdDistributedLock::BuildLockTxnRequest(
+    etcdserverpb::TxnRequest& txn_req) {
     // 构造比较条件（检查锁是否存在）
     auto* compare = txn_req.add_compare();
     if (compare != nullptr) {
@@ -150,16 +145,16 @@ void EtcdDistributedLock::BuildLockTxnRequest(etcdserverpb::TxnRequest& txn_req)
     }
 }
 
-bool EtcdDistributedLock::ExecuteTxnRequest(const etcdserverpb::TxnRequest& txn_req,
-    etcdserverpb::TxnResponse& txn_resp)
-{
+bool EtcdDistributedLock::ExecuteTxnRequest(
+    const etcdserverpb::TxnRequest& txn_req,
+    etcdserverpb::TxnResponse& txn_resp) {
     if (kv_stub_ == nullptr) {
         LOG_E("[ExecuteTxnRequest] failed: kv_stub_ is nullptr!");
         return false;
     }
     grpc::ClientContext context;
     context.set_deadline(std::chrono::system_clock::now() +
-                        std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
+                         std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
 
     const auto status = kv_stub_->Txn(&context, txn_req, &txn_resp);
     if (!status.ok()) {
@@ -169,8 +164,8 @@ bool EtcdDistributedLock::ExecuteTxnRequest(const etcdserverpb::TxnRequest& txn_
     }
     return true;
 }
-void EtcdDistributedLock::HandleLockConflict(const etcdserverpb::TxnResponse& txn_resp)
-{
+void EtcdDistributedLock::HandleLockConflict(
+    const etcdserverpb::TxnResponse& txn_resp) {
     LOG_D("[AcquireLock] Lock contention detected");
     const auto& range_response = txn_resp.responses(0).response_range();
 
@@ -182,12 +177,14 @@ void EtcdDistributedLock::HandleLockConflict(const etcdserverpb::TxnResponse& tx
     }
 }
 
-void EtcdDistributedLock::HandleLockAcquired(const etcdserverpb::TxnResponse& txn_resp)
-{
+void EtcdDistributedLock::HandleLockAcquired(
+    const etcdserverpb::TxnResponse& txn_resp) {
     for (const auto& response_op : txn_resp.responses()) {
         if (response_op.has_response_put()) {
-            lastObservedRevision = response_op.response_put().header().revision();
-            LOG_I("[AcquireLock] Lock acquired (revision: %ld)", lastObservedRevision);
+            lastObservedRevision =
+                response_op.response_put().header().revision();
+            LOG_I("[AcquireLock] Lock acquired (revision: %ld)",
+                  lastObservedRevision);
             break;
         }
     }
@@ -196,23 +193,22 @@ void EtcdDistributedLock::HandleLockAcquired(const etcdserverpb::TxnResponse& tx
 // --------------------------
 // 锁状态变更处理
 // --------------------------
-void EtcdDistributedLock::HandleLockChange(bool newLockState)
-{
+void EtcdDistributedLock::HandleLockChange(bool newLockState) {
     const bool oldState = isLocked.exchange(newLockState);
-    if (oldState == newLockState) {return;}
+    if (oldState == newLockState) {
+        return;
+    }
     // 记录状态变更日志
-    LOG_I("[LockState] Changed from %s to %s",
-          oldState ? "LOCKED" : "UNLOCKED",
+    LOG_I("[LockState] Changed from %s to %s", oldState ? "LOCKED" : "UNLOCKED",
           newLockState ? "LOCKED" : "UNLOCKED");
     // 触发回调通知
     NotifyLockChange(newLockState);
 }
 
-bool EtcdDistributedLock::TryLockOnce()
-{
-    if (AcquireLockOnce()) { // 成功获取锁
+bool EtcdDistributedLock::TryLockOnce() {
+    if (AcquireLockOnce()) {  // 成功获取锁
         HandleLockChange(true);
-        StartLeaseKeepAlive(); // 持续续约
+        StartLeaseKeepAlive();  // 持续续约
         return true;
     } else {
         HandleLockChange(false);
@@ -220,11 +216,10 @@ bool EtcdDistributedLock::TryLockOnce()
     }
 }
 
-bool EtcdDistributedLock::TryLock()
-{
+bool EtcdDistributedLock::TryLock() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (isLocked.load()) {
-        return true; // 已持有锁
+        return true;  // 已持有锁
     }
     auto ret = TryLockOnce();
     // 启动监听线程
@@ -232,8 +227,7 @@ bool EtcdDistributedLock::TryLock()
     return ret;
 }
 
-void EtcdDistributedLock::Unlock()
-{
+void EtcdDistributedLock::Unlock() {
     if (isLocked.exchange(false)) {
         RevokeLease();
         LOG_I("[EtcdLock] Released lock successfully");
@@ -241,8 +235,7 @@ void EtcdDistributedLock::Unlock()
 }
 
 // GetCurrentModVer方法仅在SafePut使用,key的namespace前缀在SafePut中添加
-int64_t EtcdDistributedLock::GetCurrentModVer(const std::string& key)
-{
+int64_t EtcdDistributedLock::GetCurrentModVer(const std::string& key) {
     if (kv_stub_ == nullptr) {
         LOG_E("[GetCurrentModVer] failed: kv_stub_ is nullptr!");
         return 0;
@@ -261,8 +254,12 @@ int64_t EtcdDistributedLock::GetCurrentModVer(const std::string& key)
 // --------------------------
 // 数据操作接口
 // --------------------------
-bool EtcdDistributedLock::SafePut(const std::string& key, const std::string& value)
-{
+bool EtcdDistributedLock::SafePut(const std::string& key,
+                                  const std::string& value) {
+    if (!EnsureConnection()) {
+        LOG_E("[SafePut] Failed to ensure etcd connection");
+        return false;
+    }
     std::string prefixedKey = PrefixedByPodNamespace(key);
     auto expectedRevision = GetCurrentModVer(prefixedKey);
     etcdserverpb::TxnRequest txn_req;
@@ -284,7 +281,8 @@ bool EtcdDistributedLock::SafePut(const std::string& key, const std::string& val
 
     etcdserverpb::TxnResponse txn_resp;
     grpc::ClientContext context;
-    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
+    context.set_deadline(std::chrono::system_clock::now() +
+                         std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
 
     if (kv_stub_ == nullptr) {
         LOG_E("[EtcdDistributedLock] SafePut failed, kv_stub_ is nullptr!");
@@ -292,12 +290,14 @@ bool EtcdDistributedLock::SafePut(const std::string& key, const std::string& val
     }
     const auto status = kv_stub_->Txn(&context, txn_req, &txn_resp);
     if (!status.ok()) {
-        LOG_E("[EtcdDistributedLock] SafePut RPC error: %s", status.error_message().c_str());
+        LOG_E("[EtcdDistributedLock] SafePut RPC error: %s",
+              status.error_message().c_str());
         return false;
     }
 
     if (txn_resp.succeeded()) {
-        LOG_I("[EtcdDistributedLock] SafePut succeeded at revision:%ld", expectedRevision + 1);
+        LOG_I("[EtcdDistributedLock] SafePut succeeded at revision:%ld",
+              expectedRevision + 1);
         return true;
     } else {
         LOG_E("[EtcdDistributedLock] SafePut conflict detected");
@@ -305,14 +305,19 @@ bool EtcdDistributedLock::SafePut(const std::string& key, const std::string& val
     }
 }
 
-bool EtcdDistributedLock::GetWithRevision(const std::string& key, std::string& value)
-{
+bool EtcdDistributedLock::GetWithRevision(const std::string& key,
+                                          std::string& value) {
+    if (!EnsureConnection()) {
+        LOG_E("[GetWithRevision] Failed to ensure etcd connection");
+        return false;
+    }
     etcdserverpb::RangeRequest req;
     req.set_key(PrefixedByPodNamespace(key));
-    
+
     grpc::ClientContext context;
-    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
-    
+    context.set_deadline(std::chrono::system_clock::now() +
+                         std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
+
     etcdserverpb::RangeResponse resp;
     if (kv_stub_ == nullptr) {
         LOG_E("[GetWithRevision] failed, kv_stub_ is nullptr!");
@@ -321,7 +326,8 @@ bool EtcdDistributedLock::GetWithRevision(const std::string& key, std::string& v
     const auto status = kv_stub_->Range(&context, req, &resp);
     if (status.ok() && resp.count() > 0) {
         value = resp.kvs(0).value();
-        LOG_D("[GetWithRevision] Retrieved value at revision:%ld", resp.kvs(0).mod_revision());
+        LOG_D("[GetWithRevision] Retrieved value at revision:%ld",
+              resp.kvs(0).mod_revision());
         return true;
     }
     return false;
@@ -330,30 +336,85 @@ bool EtcdDistributedLock::GetWithRevision(const std::string& key, std::string& v
 // --------------------------
 // 网络连接管理
 // --------------------------
-void EtcdDistributedLock::InitializeEtcdClient(const std::string& etcdAddr, TlsItems& tlsConfig)
-{
-    channel_ = CreateGrpcChannel(etcdAddr, tlsConfig);
-    if (!channel_) {
-        LOG_E("[%s] [EtcdDistributedLock] Failed to initialize etcd client channel, ADDR:%s",
-            GetErrorCode(ErrorType::UNAUTHENTICATED, ControllerFeature::LEADER_AGENT).c_str(), etcdAddr.c_str());
-        return;
+void EtcdDistributedLock::InitializeEtcdClient() {
+    for (int retryCount = 0; retryCount < connectMaxRetry_; ++retryCount) {
+        channel_ = CreateGrpcChannel(etcdAddr_, tlsConfig_);
+        if (channel_) {
+            kv_stub_ = etcdserverpb::KV::NewStub(channel_);
+            lease_stub_ = etcdserverpb::Lease::NewStub(channel_);
+            LOG_I("[InitializeEtcdClient] Connected to etcd cluster at:%s",
+                  etcdAddr_.c_str());
+            return;
+        }
+        LOG_E(
+            "[%s] [InitializeEtcdClient] Failed to connect, ADDR:%s, "
+            "retry:%d/%d",
+            GetErrorCode(ErrorType::UNAUTHENTICATED,
+                         ControllerFeature::LEADER_AGENT)
+                .c_str(),
+            etcdAddr_.c_str(), retryCount + 1, connectMaxRetry_);
+        std::this_thread::sleep_for(
+            std::chrono::seconds(ETCD_CONNECT_RETRY_INTERVAL));
     }
-    kv_stub_ = etcdserverpb::KV::NewStub(channel_);
-    lease_stub_ = etcdserverpb::Lease::NewStub(channel_);
-    LOG_I("[InitializeEtcdClient] Connected to etcd cluster at:%s", etcdAddr.c_str());
+    LOG_E(
+        "[%s] [InitializeEtcdClient] Failed to connect after %d retries, "
+        "ADDR:%s",
+        GetErrorCode(ErrorType::UNAUTHENTICATED,
+                     ControllerFeature::LEADER_AGENT)
+            .c_str(),
+        connectMaxRetry_, etcdAddr_.c_str());
+}
+
+bool EtcdDistributedLock::EnsureConnection() {
+    if (kv_stub_ != nullptr && lease_stub_ != nullptr) {
+        return true;
+    }
+    std::lock_guard<std::mutex> lock(connectMutex_);
+    if (kv_stub_ != nullptr && lease_stub_ != nullptr) {
+        return true;
+    }
+    LOG_W(
+        "[EnsureConnection] Stubs are nullptr, attempting to reconnect to etcd "
+        "at:%s",
+        etcdAddr_.c_str());
+    for (int retryCount = 0; retryCount < connectMaxRetry_; ++retryCount) {
+        channel_ = CreateGrpcChannel(etcdAddr_, tlsConfig_);
+        if (channel_) {
+            kv_stub_ = etcdserverpb::KV::NewStub(channel_);
+            lease_stub_ = etcdserverpb::Lease::NewStub(channel_);
+            LOG_I("[EnsureConnection] Reconnected to etcd cluster at:%s",
+                  etcdAddr_.c_str());
+            return true;
+        }
+        LOG_E(
+            "[%s] [EnsureConnection] Failed to reconnect, ADDR:%s, retry:%d/%d",
+            GetErrorCode(ErrorType::UNAUTHENTICATED,
+                         ControllerFeature::LEADER_AGENT)
+                .c_str(),
+            etcdAddr_.c_str(), retryCount + 1, connectMaxRetry_);
+        std::this_thread::sleep_for(
+            std::chrono::seconds(ETCD_CONNECT_RETRY_INTERVAL));
+    }
+    LOG_E(
+        "[%s] [EnsureConnection] Failed to reconnect after %d retries, ADDR:%s",
+        GetErrorCode(ErrorType::UNAUTHENTICATED,
+                     ControllerFeature::LEADER_AGENT)
+            .c_str(),
+        connectMaxRetry_, etcdAddr_.c_str());
+    return false;
 }
 
 // --------------------------
 // 租约与监听管理
 // --------------------------
-bool EtcdDistributedLock::CreateLease()
-{
+bool EtcdDistributedLock::CreateLease() {
     etcdserverpb::LeaseGrantRequest req;
     req.set_ttl(leaseTtl);
-    
+
     etcdserverpb::LeaseGrantResponse resp;
     grpc::ClientContext context;
-    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
+    context.set_deadline(std::chrono::system_clock::now() +
+                         std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
     if (!lease_stub_) {
         return false;
     }
@@ -362,24 +423,24 @@ bool EtcdDistributedLock::CreateLease()
         LOG_E("[CreateLease] Failed:%s", status.error_message().c_str());
         return false;
     }
-    
+
     leaseId = resp.id();
     LOG_I("[CreateLease] New lease ID:%ld with TTL:%d", leaseId, leaseTtl);
     return true;
 }
 
-void EtcdDistributedLock::RevokeLease()
-{
+void EtcdDistributedLock::RevokeLease() {
     if (leaseId == 0) {
         return;
     }
-    
+
     etcdserverpb::LeaseRevokeRequest req;
     req.set_id(leaseId);
 
     etcdserverpb::LeaseRevokeResponse resp;
     grpc::ClientContext context;
-    context.set_deadline(std::chrono::system_clock::now() + std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
+    context.set_deadline(std::chrono::system_clock::now() +
+                         std::chrono::seconds(etcdTimeInfo.staticRpcTimeout));
     if (lease_stub_ == nullptr) {
         LOG_E("[RevokeLease] failed, lease_stub_ is nullptr!, leaseId reset!");
         leaseId = 0;
@@ -390,20 +451,23 @@ void EtcdDistributedLock::RevokeLease()
     leaseId = 0;
 }
 
-int EtcdDistributedLock::CalculateSleepTime(int ttl) const
-{
-    if (ttl <= 0) {return MIN_INTERVAL;}
-    return std::clamp(ttl / 2, MIN_INTERVAL, etcdTimeInfo.staticLeaseTtl / 2); // 2：租约剩余时间二分之一
+int EtcdDistributedLock::CalculateSleepTime(int ttl) const {
+    if (ttl <= 0) {
+        return MIN_INTERVAL;
+    }
+    return std::clamp(
+        ttl / 2, MIN_INTERVAL,
+        etcdTimeInfo.staticLeaseTtl / 2);  // 2：租约剩余时间二分之一
 }
 
-bool EtcdDistributedLock::TryRenewLease(int& retryCount, int& ttl)
-{
+bool EtcdDistributedLock::TryRenewLease(int& retryCount, int& ttl) {
     if (lease_stub_ == nullptr) {
         LOG_E("[TryRenewLease] failed, lease_stub_ is nullptr!");
         return false;
     }
-    LeaseKeepAliveSession session(*lease_stub_.get(), etcdTimeInfo.staticLeaseTtl);
-    
+    LeaseKeepAliveSession session(*lease_stub_.get(),
+                                  etcdTimeInfo.staticLeaseTtl);
+
     if (!session.WriteRequest(leaseId)) {
         LOG_E("[TryRenewLease]Write failed, retry:%d", retryCount);
         return false;
@@ -415,8 +479,9 @@ bool EtcdDistributedLock::TryRenewLease(int& retryCount, int& ttl)
         return false;
     }
 
-    if (resp.id() != leaseId || resp.ttl() <= 0) { // 对返回值做合法性校验
-        LOG_E("[TryRenewLease]Invalid lease ID or ttl received:%ld、%ld", resp.id(), resp.ttl());
+    if (resp.id() != leaseId || resp.ttl() <= 0) {  // 对返回值做合法性校验
+        LOG_E("[TryRenewLease]Invalid lease ID or ttl received:%ld、%ld",
+              resp.id(), resp.ttl());
         return false;
     }
     ttl = resp.ttl();
@@ -424,8 +489,7 @@ bool EtcdDistributedLock::TryRenewLease(int& retryCount, int& ttl)
     return true;
 }
 
-void EtcdDistributedLock::StartLeaseKeepAlive()
-{
+void EtcdDistributedLock::StartLeaseKeepAlive() {
     running_.store(false);
     if (keepaliveThreadPtr && keepaliveThreadPtr->joinable()) {
         LOG_W("LeaseKeepAlive thread is already running");
@@ -435,17 +499,18 @@ void EtcdDistributedLock::StartLeaseKeepAlive()
     running_.store(true);
 
     try {
-        keepaliveThreadPtr = std::make_unique<std::thread>(&EtcdDistributedLock::LeaseKeepAliveWorker, this);
-    } catch (const std::exception &e) {
-        LOG_E("[StartLeaseKeepAlive] Failed to create keepalive thread: {}", e.what());
+        keepaliveThreadPtr = std::make_unique<std::thread>(
+            &EtcdDistributedLock::LeaseKeepAliveWorker, this);
+    } catch (const std::exception& e) {
+        LOG_E("[StartLeaseKeepAlive] Failed to create keepalive thread: {}",
+              e.what());
         running_.store(false);
         keepaliveThreadPtr.reset();
         throw std::runtime_error("Failed to create keepalive thread");
     }
 }
 
-void EtcdDistributedLock::LeaseKeepAliveWorker()
-{
+void EtcdDistributedLock::LeaseKeepAliveWorker() {
     int retryCount = 0;
     int ttl = 0;
     try {
@@ -455,7 +520,7 @@ void EtcdDistributedLock::LeaseKeepAliveWorker()
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
             }
-            retryCount = 0; // 成功后续约计数清零
+            retryCount = 0;  // 成功后续约计数清零
             int sleepSec = CalculateSleepTime(ttl);
             std::this_thread::sleep_for(std::chrono::seconds(sleepSec));
         }
@@ -468,50 +533,71 @@ void EtcdDistributedLock::LeaseKeepAliveWorker()
     }
 }
 
-void EtcdDistributedLock::StartWatch()
-{
+void EtcdDistributedLock::StartWatch() {
     try {
-        watchThreadPtr = std::make_unique<std::thread>(&EtcdDistributedLock::WatchWorker, this);
-    } catch (const std::exception &e) {
+        watchThreadPtr = std::make_unique<std::thread>(
+            &EtcdDistributedLock::WatchWorker, this);
+    } catch (const std::exception& e) {
         LOG_E("[StartWatch] Failed to create watch thread: {}", e.what());
         watchThreadPtr.reset();
         throw std::runtime_error("Failed to create watch thread");
     }
 }
 
-void EtcdDistributedLock::WatchWorker()
-{
+void EtcdDistributedLock::WatchWorker() {
     int retryCount = 0;
     try {
         while (retryCount < WATCH_MAX_RETRY) {
+            if (!EnsureConnection()) {
+                LOG_E(
+                    "[LeaderAgent StartWatch] EnsureConnection failed, "
+                    "retry:%d",
+                    retryCount);
+                retryCount++;
+                std::this_thread::sleep_for(
+                    std::chrono::seconds(ETCD_WATCH_GAP_SECONDS));
+                continue;
+            }
             etcdserverpb::RangeRequest range_req;
             range_req.set_key(lockKey);
-            range_req.set_limit(1); // 1：表示只获取一个键值对
+            range_req.set_limit(1);  // 1：表示只获取一个键值对
             etcdserverpb::RangeResponse range_resp;
             grpc::ClientContext kv_ctx;
-            if (kv_stub_ == nullptr || !kv_stub_->Range(&kv_ctx, range_req, &range_resp).ok()) {
-                LOG_E("[LeaderAgent StartWatch] Range failed, retry:%d", retryCount);
+            if (kv_stub_ == nullptr ||
+                !kv_stub_->Range(&kv_ctx, range_req, &range_resp).ok()) {
+                LOG_E("[LeaderAgent StartWatch] Range failed, retry:%d",
+                      retryCount);
                 retryCount++;
-                std::this_thread::sleep_for(std::chrono::seconds(ETCD_WATCH_GAP_SECONDS));
+                std::this_thread::sleep_for(
+                    std::chrono::seconds(ETCD_WATCH_GAP_SECONDS));
                 continue;
             }
             retryCount = 0;
             if (range_resp.kvs_size() > 0) {
-                LOG_I("[LeaderAgent StartWatch] Lock is locked, it means leader alive, keep watch");
-                std::this_thread::sleep_for(std::chrono::seconds(ETCD_WATCH_GAP_SECONDS));
+                LOG_I(
+                    "[LeaderAgent StartWatch] Lock is locked, it means leader "
+                    "alive, keep watch");
+                std::this_thread::sleep_for(
+                    std::chrono::seconds(ETCD_WATCH_GAP_SECONDS));
                 continue;
             }
             if (!isLocked.load()) {
                 auto ret = TryLockOnce();
-                LOG_I("[LeaderAgent StartWatch] Lock is unlock, follwer try to lock, ret is:%d", ret);
+                LOG_I(
+                    "[LeaderAgent StartWatch] Lock is unlock, follower try to "
+                    "lock, ret is:%d",
+                    ret);
             } else {
-                LOG_W("[LeaderAgent StartWatch] Lock is unlock, leader change to follwer");
+                LOG_W(
+                    "[LeaderAgent StartWatch] Lock is unlock, leader change to "
+                    "follower");
                 NotifyLockChange(false);
             }
-            std::this_thread::sleep_for(std::chrono::seconds(ETCD_WATCH_GAP_SECONDS));
+            std::this_thread::sleep_for(
+                std::chrono::seconds(ETCD_WATCH_GAP_SECONDS));
         }
         LOG_W("[LeaderAgent StartWatch] StartWatch thread exited");
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
         LOG_E("StartWatch worker exception: {}", e.what());
     }
 }
@@ -519,38 +605,36 @@ void EtcdDistributedLock::WatchWorker()
 // --------------------------
 // 状态变更处理
 // --------------------------
-void EtcdDistributedLock::HandleLeaseLost()
-{
+void EtcdDistributedLock::HandleLeaseLost() {
     if (isLocked.exchange(false)) {
         LOG_W("[LeaderAgent LeaseLost] Lease expired, releasing lock");
         NotifyLockChange(false);
     }
 }
 
-void EtcdDistributedLock::NotifyLockChange(bool locked)
-{
+void EtcdDistributedLock::NotifyLockChange(bool locked) {
     std::lock_guard<std::mutex> lock(cbMutex);
     if (callback_) {
-        LOG_I("[LeaderAgent Notify] Lock state changed to:%s", locked ? "Leader" : "Follower");
+        LOG_I("[LeaderAgent Notify] Lock state changed to:%s",
+              locked ? "Leader" : "Follower");
         callback_(locked);
     }
 }
 
-void EtcdDistributedLock::Stop()
-{
+void EtcdDistributedLock::Stop() {
     running_.store(false);
-    
+
     if (keepaliveThreadPtr && keepaliveThreadPtr->joinable()) {
         keepaliveThreadPtr->join();
     }
     if (watchThreadPtr && watchThreadPtr->joinable()) {
         watchThreadPtr->join();
     }
-    
+
     if (isLocked.load()) {
         RevokeLease();
     }
     LOG_I("[Stop] Etcd lock service stopped");
 }
-} // namespace MS
-} // namespace MINDIE
+}  // namespace MS
+}  // namespace MINDIE

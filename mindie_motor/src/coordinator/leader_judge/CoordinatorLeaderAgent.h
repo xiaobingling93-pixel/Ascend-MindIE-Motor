@@ -9,8 +9,8 @@
  * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
  * See the Mulan PSL v2 for more details.
  */
-#ifndef MS_CONTROLLERLEADERAGENT_H
-#define MS_CONTROLLERLEADERAGENT_H
+#ifndef MINDIE_MS_COORDINATOR_LEADER_AGENT_H
+#define MINDIE_MS_COORDINATOR_LEADER_AGENT_H
 #include "LeaderAgent.h"
 #include "ControllerListener.h"
 #include "RequestListener.h"
@@ -37,4 +37,4 @@ private:
 
 } // namespace MINDIE::MS
 
-#endif // MINDIE_MS_CONTROLLERLEADERAGENT_H
+#endif // MINDIE_MS_COORDINATOR_LEADER_AGENT_H

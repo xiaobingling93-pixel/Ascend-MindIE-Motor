@@ -6,11 +6,11 @@
 
 ## 环境准备
 
-## 镜像安装方式
+### 镜像安装方式
 
 MindIE镜像获取请参见[镜像安装方式](https://gitcode.com/Ascend/MindIE-LLM/blob/dev/docs/zh/user_guide/install/source/image_usage_guide.md#%E8%8E%B7%E5%8F%96mindie%E9%95%9C%E5%83%8F)。
 
-## 容器/物理机安装方式
+### 容器/物理机安装方式
 
 1. 容器/物理机安装方式，需要准备的软件包和依赖请参见[准备软件包和依赖](https://gitcode.com/Ascend/MindIE-LLM/blob/dev/docs/zh/user_guide/install/source/preparing_software_and_dependencies.md)。
 2. 容器/物理机安装方式，软件包和依赖的安装请参见[安装软件包和依赖](https://gitcode.com/Ascend/MindIE-LLM/blob/dev/docs/zh/user_guide/install/source/installing_software_and_dependencies.md)。
@@ -31,13 +31,31 @@ MindIE镜像获取请参见[镜像安装方式](https://gitcode.com/Ascend/MindI
     cd MindIE-Motor
     ```
 
-3. 编译第三方依赖。
+3. 根据环境需要，自行设置网络代理。
+4. 设置以下环境变量禁用证书。
 
     ```bash
-    bash build/build.sh -d 3rd -b 3rd
+    export NO_CHECK_CERTIFICATE=1
     ```
 
-4. 设置环境变量。
+    >[!NOTE]说明
+    >使用该命令会禁用证书，可能会导致安全风险，需要注意数据保护。您也可以通过手动下载三方zip包进行上传。
+
+5. 执行以下命令下载unzip工具。
+
+    ```bash
+    yum install unzip #openEuler
+    ```
+
+6. 编译第三方依赖。
+
+    ```bash
+    env -u LD_LIBRARY_PATH bash build/build.sh -d 3rd -b 3rd
+    ```
+
+    - env -u *xxx*：表示在启动指定命令时移出环境变量*xxx*。
+
+7. 设置环境变量。
     获取 Python site-packages 路径（建议不要强行编码 torch 路径），并配置动态库搜索路径：
 
     ```bash
@@ -51,7 +69,7 @@ MindIE镜像获取请参见[镜像安装方式](https://gitcode.com/Ascend/MindI
     export MINDIE_MOTOR_VERSION_OVERRIDE=3.0.0
     ```
 
-5. 编译生成 `.whl` 包。
+8. 编译生成 `.whl` 包。
 
     ```bash
     cd mindie_motor/python
@@ -62,21 +80,21 @@ MindIE镜像获取请参见[镜像安装方式](https://gitcode.com/Ascend/MindI
     * 编译时，`setup.py` 会自动调用 `build.sh` 编译C++代码，并拷贝第三方依赖到包内。
     * 编译后，生成临时目录 `build`、存放二进制的目录 `output` 和debug符号表`motor_debug_symbols` 目录。
 
-6. 安装 MindIE-Motor。
-   
+9. 安装 MindIE-Motor。
+
     ```bash
     pip install mindie_motor*.whl
     ```
 
-7. 权限配置。
+10. 权限配置。
     由于whl包安装后是按照系统设定的权限，如下权限可能需要适配（可根据实际权限报错处理），以大EP为例，在boot.sh中添加如下命令：
 
     ```bash
     chmod 500 /usr/local/lib/python3.11/site-packages/mindie_motor/scripts/http_client_ctl/*;
-    chmod 550 /usr/local/lib/python3.11/site-packages/mindie_motor/examples/kubernetes_deploy_scripts/boot_helper/*; 
-    chmod 640 /usr/local/lib/python3.11/site-packages/mindie_motor/examples/kubernetes_deploy_scripts/boot_helper/boot.sh; 
-    chmod 500 /usr/local/lib/python3.11/site-packages/mindie_motor/scripts/http_client_ctl/*; 
-    chmod 700 /root; 
+    chmod 550 /usr/local/lib/python3.11/site-packages/mindie_motor/examples/kubernetes_deploy_scripts/boot_helper/*;
+    chmod 640 /usr/local/lib/python3.11/site-packages/mindie_motor/examples/kubernetes_deploy_scripts/boot_helper/boot.sh;
+    chmod 500 /usr/local/lib/python3.11/site-packages/mindie_motor/scripts/http_client_ctl/*;
+    chmod 700 /root;
     chmod 640 /usr/local/lib/python3.11/site-packages/mindie_motor/conf/model_config/*.json;
     chmod 640 /usr/local/lib/python3.11/site-packages/mindie_motor/conf/machine_config/*.json;
     ```

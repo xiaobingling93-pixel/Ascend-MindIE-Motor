@@ -38,6 +38,32 @@ fi
 
 CONFIG_DIR="$MIES_INSTALL_PATH/conf"
 
+ELASTIC_SCALING_MOUNT_DEFAULT="$CONFIG_DIR/scaling/elastic_scaling.json"
+
+elastic_scaling_sync_loop() {
+    local src="${ELASTIC_SCALING_SRC:-$ELASTIC_SCALING_MOUNT_DEFAULT}"
+    local dst="${ELASTIC_SCALING_DST:-$CONFIG_DIR/elastic_scaling.json}"
+    if [ "$src" = "$dst" ]; then
+        echo "elastic_scaling_sync: ELASTIC_SCALING_SRC equals destination, skip"
+        return 0
+    fi
+    mkdir -p "$(dirname "$dst")"
+    copy_elastic_scaling_once() {
+        if [ ! -e "$src" ] && [ ! -L "$src" ]; then
+            return 0
+        fi
+        if cat "$src" > "$dst.tmp" 2>/dev/null; then
+            mv -f "$dst.tmp" "$dst"
+            chmod 640 "$dst" 2>/dev/null || true
+        fi
+    }
+    copy_elastic_scaling_once
+    while true; do
+        sleep 5
+        copy_elastic_scaling_once
+    done
+}
+
 cd "$MIES_INSTALL_PATH"
 
 if [ $# -eq 0 ]; then
@@ -137,6 +163,7 @@ if [ $# -eq 0 ]; then
                 set_prefill_env
                 CURRENT_ROLE="prefill"
             fi
+            export MALLOC_CONF="background_thread:true,tcache_nslots_small_max:20,tcache_nslots_small_min:5,narenas:4,dirty_decay_ms:5000,muzzy_decay_ms:5000"
             node_manager "$exit_server_num" "$CURRENT_ROLE" &
             pid=$!
             echo "pull up $CURRENT_ROLE instance, number: $exit_server_num"
@@ -159,6 +186,7 @@ if [ $# -eq 0 ]; then
             if [ ! -n "$APP_TYPE" ]; then
                 mindie_llm_server --config-file "$CONFIG_DIR/config.json" &
             else
+                export MALLOC_CONF="background_thread:true,tcache_nslots_small_max:20,tcache_nslots_small_min:5,narenas:4,dirty_decay_ms:5000,muzzy_decay_ms:5000"
                 node_manager &
             fi
             pid=$!
@@ -193,6 +221,7 @@ if [ $# -eq 0 ]; then
             export MINDIE_LOG_PATH="$CONTROLLER_LOG_CONFIG_PATH/$MODEL_NAME/$MODEL_ID/mindie"
         fi
         set_controller_env
+        elastic_scaling_sync_loop &
         om_adapter Controller &
         mindie_motor_controller
     fi
