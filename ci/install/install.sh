@@ -227,7 +227,7 @@ function check_path() {
             exit 1
         fi
         if [ ! -d "${install_dir}" ]; then
-            print "ERROR" "Install failed, create ${install_dir} faied"
+            print "ERROR" "Install failed, create ${install_dir} failed"
             exit 1
         fi
     else
@@ -241,13 +241,9 @@ function check_path() {
 
 function install_python_api() {
     cd $install_dir
-    benchmark_wheel_path=$(find $install_dir/bin/ -name mindiebenchmark*.whl)
-    client_wheel_path=$(find $install_dir/bin/ -name mindieclient*.whl)
-    model_wrapper_path=$(find $install_dir/bin/ -name model_wrapper*.whl)
     om_adapter_path=$(find $install_dir/bin/ -name om_adapter*.whl)
     node_manager_wheel_path=$(find $install_dir/bin/ -name node_manager*.whl)
-    print "INFO" "Ready to start install ${benchmark_wheel_path}, ${client_wheel_path}, \
-    ${infer_engine_path}, ${model_wrapper_path}, ${om_adapter_path}, ${node_manager_wheel_path}"
+    print "INFO" "Ready to start install ${om_adapter_path}, ${node_manager_wheel_path}"
 
     python_version=$(python3 -c 'import sys; print(sys.version_info.major, sys.version_info.minor)' 2>&1)
     # 提取主版本和次版本号
@@ -264,12 +260,12 @@ function install_python_api() {
 
     if [[ -n "${py_cmd}" ]]; then
         # 安装新版本
-        ${py_cmd} -m pip install ${om_adapter_path} --log-file ${log_file} --force-reinstall
+        ${py_cmd} -m pip install ${om_adapter_path} --log-file ${log_file} --force-reinstall --no-deps
         if [ $? -ne 0 ]; then
             print "ERROR" "Failed to install adapter wheel for mindie service"
             exit 1
         fi
-        ${py_cmd} -m pip install ${node_manager_wheel_path} --log-file ${log_file} --force-reinstall
+        ${py_cmd} -m pip install ${node_manager_wheel_path} --log-file ${log_file} --force-reinstall --no-deps
         if [ $? -ne 0 ]; then
             print "ERROR" "Failed to install node_manager wheel for mindie service"
             exit 1

@@ -23,23 +23,36 @@ ARCH=$(uname -m)
 
 LOG_PATH="/var/log/mindie_log/"
 LOG_NAME="mindie_service_install.log"
-[ -z "$MINDIE_VERSION" ] && MINDIE_VERSION="1.0.0"
-[ -z "$MINDIE_SERVICE_VERSION" ] && MINDIE_SERVICE_VERSION="$MINDIE_VERSION"
+[ -z "$MINDIE_VERSION" ] && MINDIE_VERSION="${MINDIE_MOTOR_VERSION_OVERRIDE}"
+[ -z "$MINDIE_SERVICE_VERSION" ] && MINDIE_SERVICE_VERSION="${MINDIE_MOTOR_VERSION_OVERRIDE}"
 
 # discard in the future --- begin
 BUILD_DIR=$(dirname $(readlink -f $0))
 DEBUG="$1"
 PROJ_ROOT_DIR=${BUILD_DIR}/..
-MindIEServiceVersion="1.0.0"
+MindIEServiceVersion=""
 if [ ! -f "${PROJ_ROOT_DIR}"/../CI/config/version.ini ]; then
-    echo "version.ini is not exsited !"
+    echo "version.ini is not existed !"
 else
     MindIEServiceVersion=$(cat ${PROJ_ROOT_DIR}/../CI/config/version.ini | grep "PackageName" | cut -d "=" -f 2)
 fi
-MindIEServiceVersion=$(echo $MindIEServiceVersion | sed -E 's/([0-9]+)\.([0-9]+)\.RC([0-9]+)\.([0-9]+)/\1.\2rc\3.post\4/')
-echo "MindIEServiceVersion $MindIEServiceVersion"
-MINDIE_VERSION="$MindIEServiceVersion"
-MINDIE_SERVICE_VERSION="$MindIEServiceVersion"
+if [ -n "$MindIEServiceVersion" ]; then
+    MindIEServiceVersion=$(echo $MindIEServiceVersion | sed -E 's/([0-9]+)\.([0-9]+)\.RC([0-9]+)\.([0-9]+)/\1.\2rc\3.post\4/')
+    echo "MindIEServiceVersion(from version.ini) $MindIEServiceVersion"
+fi
+# Version precedence:
+# 1. Environment variable MINDIE_MOTOR_VERSION_OVERRIDE (align with whl)
+# 2. Environment variable MINDIE_VERSION / MINDIE_SERVICE_VERSION
+# 3. version.ini PackageName
+# 4. default 3.0.0
+if [ -z "$MINDIE_VERSION" ] && [ -n "$MindIEServiceVersion" ]; then
+    MINDIE_VERSION="$MindIEServiceVersion"
+fi
+if [ -z "$MINDIE_SERVICE_VERSION" ] && [ -n "$MindIEServiceVersion" ]; then
+    MINDIE_SERVICE_VERSION="$MindIEServiceVersion"
+fi
+[ -z "$MINDIE_VERSION" ] && MINDIE_VERSION="3.0.0"
+[ -z "$MINDIE_SERVICE_VERSION" ] && MINDIE_SERVICE_VERSION="$MINDIE_VERSION"
 echo "MINDIE_VERSION: $MINDIE_VERSION"
 echo "MINDIE_SERVICE_VERSION: $MINDIE_SERVICE_VERSION"
 # discard in the future --- end

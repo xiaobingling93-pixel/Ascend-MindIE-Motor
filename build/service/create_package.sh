@@ -25,7 +25,8 @@ ARCH=$(uname -m)
 
 LOG_PATH="/var/log/mindie_log/"
 LOG_NAME="mindie_service_install.log"
-[ -z "$MINDIE_VERSION" ] && MINDIE_VERSION="1.0.0"
+# 与 ci/create_package.sh、ci/build_service_py_wheels.sh 默认保持一致，避免 install 解压到 3.0.0 而 whl 仍为 1.0.0
+[ -z "$MINDIE_VERSION" ] && MINDIE_VERSION="3.0.0"
 [ -z "$MINDIE_SERVICE_VERSION" ] && MINDIE_SERVICE_VERSION="$MINDIE_VERSION"
 
 export RELEASE_TMP_DIR=${SERVICE_ROOT_DIR}/output/build/Ascend-mindie-service-${MINDIE_VERSION}-linux-${ARCH}
