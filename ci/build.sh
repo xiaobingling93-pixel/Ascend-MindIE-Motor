@@ -172,6 +172,11 @@ build_mindieclient() {
     mv dist/mindieclient*.whl "$BUILD_MINDIE_SERVICE_INSTALL_DIR"/dist
 }
 
+build_service_python_wheels() {
+    cd "$MINDIE_SERVICE_SRC_DIR"
+    bash "$MINDIE_SERVICE_SRC_DIR"/ci/build_service_py_wheels.sh
+}
+
 function fn_extract_debug_symbols() {
     local in_dir=$1
     local out_dir=$2
@@ -192,6 +197,7 @@ build_mies() {
     build_mies_http_client_ctl &
     build_mindiebenchmark &
     build_mindieclient &
+    build_service_python_wheels &
     wait
     if [[ "$DEBUG" == "false" ]]; then
         fn_extract_debug_symbols \
@@ -233,6 +239,8 @@ clean_mies_build() {
     rm -rf "$SERVER_DIR"/src/tokenizer/build "$SERVER_DIR"/src/tokenizer/*.egg-info "$SERVER_DIR"/src/tokenizer/dist
     rm -rf "$MINDIE_BENCHMARK_DIR"/build "$MINDIE_BENCHMARK_DIR"/*.egg-info "$MINDIE_BENCHMARK_DIR"/dist
     rm -rf "$MINDIE_CLIENT_DIR"/build "$MINDIE_CLIENT_DIR"/*.egg-info "$MINDIE_CLIENT_DIR"/dist
+    rm -f "$BUILD_MINDIE_SERVICE_INSTALL_DIR"/dist/om_adapter-*-py3-*.whl \
+        "$BUILD_MINDIE_SERVICE_INSTALL_DIR"/dist/node_manager-*-py3-*.whl
     echo "Clean Success"
 }
 

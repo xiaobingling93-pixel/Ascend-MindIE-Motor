@@ -49,14 +49,14 @@ spec:
                   command:
                     - bash
                     - -c
-                    - "$MIES_INSTALL_PATH/scripts/http_client_ctl/probe.sh readiness"
+                    - P="${MIES_INSTALL_PATH}/scripts/http_client_ctl/probe.sh"; [ "${MINDIE_IS_WHL_PACKAGE:-0}" = "1" ] && P="$(python3 -c 'import os,mindie_motor; print(os.path.join(os.path.dirname(mindie_motor.__file__), "scripts", "http_client_ctl", "probe.sh"))')"; exec bash "$P" readiness
                 periodSeconds: 5
               livenessProbe:
                 exec:
                   command:
                     - bash
                     - -c
-                    - "$MIES_INSTALL_PATH/scripts/http_client_ctl/probe.sh liveness"
+                    - P="${MIES_INSTALL_PATH}/scripts/http_client_ctl/probe.sh"; [ "${MINDIE_IS_WHL_PACKAGE:-0}" = "1" ] && P="$(python3 -c 'import os,mindie_motor; print(os.path.join(os.path.dirname(mindie_motor.__file__), "scripts", "http_client_ctl", "probe.sh"))')"; exec bash "$P" liveness
                 periodSeconds: 5
                 timeoutSeconds: 4
               startupProbe:
@@ -64,7 +64,7 @@ spec:
                   command:
                     - bash
                     - -c
-                    - "$MIES_INSTALL_PATH/scripts/http_client_ctl/probe.sh startup"
+                    - P="${MIES_INSTALL_PATH}/scripts/http_client_ctl/probe.sh"; [ "${MINDIE_IS_WHL_PACKAGE:-0}" = "1" ] && P="$(python3 -c 'import os,mindie_motor; print(os.path.join(os.path.dirname(mindie_motor.__file__), "scripts", "http_client_ctl", "probe.sh"))')"; exec bash "$P" startup
                 periodSeconds: 5
                 failureThreshold: 100
               env:
@@ -77,7 +77,7 @@ spec:
                 - name: TORCH_DEVICE_BACKEND_AUTOLOAD
                   value: "0"
                 - name: MIES_INSTALL_PATH
-                  value: /usr/local/lib/python3.11/site-packages/mindie_motor
+                  value: /usr/local/Ascend/mindie/latest/mindie-service
                 - name: CONFIG_FROM_CONFIGMAP_PATH
                   value: /mnt/configmap
                 - name: COORDINATOR_LOG_CONFIG_PATH

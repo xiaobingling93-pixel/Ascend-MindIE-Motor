@@ -8,14 +8,154 @@
 # EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 # MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 # See the Mulan PSL v2 for more details.
-
+#
+# 优先检测 whl 包（mindie_motor_* 命令是否存在），再检测 run 包（ms_* 二进制）。
+# 如果两者都没有就报错。
+# 导出 MINDIE_IS_WHL_PACKAGE=1（whl）或 =0（run），供 node_manager / llm_daemon_starter 与 mindie_run_* 使用。
 
 source "$MINDIE_LLM_HOME_PATH/set_env.sh"
+
+_boot_dir=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)
+detect_mies_install_path() {
+    local cur="$1"
+    local i
+    for i in $(seq 1 16); do
+        if [ -d "$cur/bin" ] && [ -d "$cur/conf" ]; then
+            if [ -x "$cur/bin/ms_controller" ] || [ -x "$cur/bin/ms_coordinator" ]; then
+                echo "$cur"
+                return 0
+            fi
+        fi
+        if [ -d "$cur/install/bin" ] && [ -d "$cur/install/conf" ]; then
+            if [ -x "$cur/install/bin/ms_controller" ] || [ -x "$cur/install/bin/ms_coordinator" ]; then
+                echo "$cur/install"
+                return 0
+            fi
+        fi
+        [ "$cur" = "/" ] && break
+        cur=$(dirname "$cur")
+    done
+    return 1
+}
+
+if [ -z "${MIES_INSTALL_PATH:-}" ]; then
+    if ! MIES_INSTALL_PATH=$(detect_mies_install_path "$_boot_dir"); then
+        echo "Error: cannot detect MIES_INSTALL_PATH. Set it explicitly, e.g."
+        echo "  export MIES_INSTALL_PATH=/usr/local/Ascend/mindie-service/<version>"
+        exit 1
+    fi
+    export MIES_INSTALL_PATH
+fi
+
+if [ ! -d "$MIES_INSTALL_PATH/conf" ]; then
+    echo "Error: MIES_INSTALL_PATH=$MIES_INSTALL_PATH has no conf/."
+    exit 1
+fi
+
+# === 优先检测 whl 包，再检测 run 包 ===
+if command -v mindie_motor_controller >/dev/null 2>&1 || command -v mindie_motor_coordinator >/dev/null 2>&1; then
+    echo "Detected whl/pip layout (mindie_motor_* commands found on PATH)"
+    MINDIE_IS_WHL_PACKAGE=1
+elif [ -x "$MIES_INSTALL_PATH/bin/ms_controller" ] || [ -x "$MIES_INSTALL_PATH/bin/ms_coordinator" ]; then
+    echo "Detected run layout (ms_* binaries found)"
+    MINDIE_IS_WHL_PACKAGE=0
+else
+    echo "Error: Neither whl (mindie_motor_*) nor run (ms_*) layout detected."
+    echo "Please check installation/PATH, or set MIES_INSTALL_PATH to a valid mindie-service root."
+    echo "Hint: 若 mindie-service 安装失败（例如 om_adapter 多版本 pip 冲突），请先修复安装；并确认 PATH 上有 mindie_motor_*，或 \$MIES_INSTALL_PATH/bin 下有 ms_controller/ms_coordinator。"
+    exit 1
+fi
+export MINDIE_IS_WHL_PACKAGE
+
+if [ "${MINDIE_IS_WHL_PACKAGE:-1}" = "0" ]; then
+    if [ ! -d "$MIES_INSTALL_PATH/bin" ]; then
+        echo "Error: run layout requires $MIES_INSTALL_PATH/bin."
+        exit 1
+    fi
+    # C++ 二进制在 $MIES_INSTALL_PATH/bin；om_adapter / node_manager 由 install 对 whl 做 pip install，
+    # 可执行脚本在 pip 所用解释器的 scripts / user-base/bin 下。可显式覆盖：export MINDIE_PIP_PYTHON=python3.11
+    mindie_resolve_pip_py_cmd() {
+        if [ -n "${MINDIE_PIP_PYTHON:-}" ] && command -v "${MINDIE_PIP_PYTHON}" >/dev/null 2>&1; then
+            echo "${MINDIE_PIP_PYTHON}"
+            return 0
+        fi
+        if ! command -v python3 >/dev/null 2>&1; then
+            return 1
+        fi
+        _py_ver=$(python3 -c 'import sys; print(sys.version_info.major, sys.version_info.minor)' 2>/dev/null || true)
+        _py_mm=$(echo "$_py_ver" | awk '{print $1"."$2}')
+        case "$_py_mm" in
+            3.11)
+                command -v python3.11 >/dev/null 2>&1 && echo python3.11 && return 0
+                ;;
+            3.10)
+                command -v python3.10 >/dev/null 2>&1 && echo python3.10 && return 0
+                ;;
+            3.9)
+                command -v python3.9 >/dev/null 2>&1 && echo python3.9 && return 0
+                ;;
+        esac
+        echo python3
+        return 0
+    }
+
+    PATH="$MIES_INSTALL_PATH/bin:${PATH:-}"
+    _mindie_py_cmd=$(mindie_resolve_pip_py_cmd) || _mindie_py_cmd=""
+    if [ -n "${_mindie_py_cmd:-}" ]; then
+        _py_scripts=$(${_mindie_py_cmd} -c 'import sysconfig; print(sysconfig.get_path("scripts"))' 2>/dev/null || true)
+        if [ -n "${_py_scripts:-}" ] && [ -d "$_py_scripts" ]; then
+            PATH="${_py_scripts}:${PATH}"
+        fi
+        _py_user_base=$(${_mindie_py_cmd} -m site --user-base 2>/dev/null || true)
+        if [ -n "${_py_user_base:-}" ] && [ -d "$_py_user_base/bin" ]; then
+            PATH="${_py_user_base}/bin:${PATH}"
+        fi
+    fi
+    export PATH
+    if ! command -v om_adapter >/dev/null 2>&1 || ! command -v node_manager >/dev/null 2>&1; then
+        echo "Warning: om_adapter or node_manager not on PATH after run-layout env setup."
+        echo "  MIES_INSTALL_PATH=$MIES_INSTALL_PATH"
+        echo "  pip interpreter used for PATH: ${_mindie_py_cmd:-unknown}"
+        echo "  Try: export MINDIE_PIP_PYTHON=python3.11"
+        echo "  Or add the directory containing om_adapter to PATH (see: ${_mindie_py_cmd:-python3} -m site --user-base; ${_mindie_py_cmd:-python3} -c 'import sysconfig; print(sysconfig.get_path(\"scripts\"))')"
+    fi
+    export LD_LIBRARY_PATH="$MIES_INSTALL_PATH/lib:$MIES_INSTALL_PATH/lib/grpc:${LD_LIBRARY_PATH:-}"
+fi
+
+if [ -n "${MINDIE_LLM_HOME_PATH:-}" ] && [ -f "$MINDIE_LLM_HOME_PATH/set_env.sh" ]; then
+    source "$MINDIE_LLM_HOME_PATH/set_env.sh"
+elif [ -f "$MIES_INSTALL_PATH/scripts/set_env.sh" ]; then
+    source "$MIES_INSTALL_PATH/scripts/set_env.sh"
+else
+    echo "Error: no set_env.sh found. Expected one of:"
+    echo "  \$MINDIE_LLM_HOME_PATH/set_env.sh (MindIE-LLM)"
+    echo "  \$MIES_INSTALL_PATH/scripts/set_env.sh (mindie-service install)"
+    exit 1
+fi
 export MINDIE_LOG_TO_STDOUT=1
 export MINDIE_LOG_LEVEL=info
 export MINDIE_LOG_TO_FILE=1
 # set_common_env支持用户修改环境变量覆盖原始MindIE环境变量
+if ! type set_common_env >/dev/null 2>&1; then
+    set_common_env() { :; }
+fi
 set_common_env
+
+mindie_run_controller() {
+    if [ "${MINDIE_IS_WHL_PACKAGE:-1}" = "0" ]; then
+        "$MIES_INSTALL_PATH/bin/ms_controller" "$@"
+    else
+        mindie_motor_controller "$@"
+    fi
+}
+
+mindie_run_coordinator() {
+    if [ "${MINDIE_IS_WHL_PACKAGE:-1}" = "0" ]; then
+        "$MIES_INSTALL_PATH/bin/ms_coordinator" "$@"
+    else
+        mindie_motor_coordinator "$@"
+    fi
+}
 
 # DFX: copy failure must be logged and abort boot immediately
 copy_or_fail() {
@@ -184,11 +324,16 @@ if [ $# -eq 0 ]; then
             export HCCL_RDMA_TIMEOUT=18
             export HCCL_EXEC_TIMEOUT=60
             if [ ! -n "$APP_TYPE" ]; then
-                mindie_llm_server --config-file "$CONFIG_DIR/config.json" &
+                if [ "${MINDIE_IS_WHL_PACKAGE:-1}" = "1" ]; then
+                    /usr/local/bin/mindie_llm_server --config-file "$CONFIG_DIR/config.json" --expert-parallel true &
+                else
+                    "$MIES_INSTALL_PATH/bin/mindieservice_daemon" --config-file "$CONFIG_DIR/config.json" --expert-parallel true &
+                fi
             else
                 export MALLOC_CONF="background_thread:true,tcache_nslots_small_max:20,tcache_nslots_small_min:5,narenas:4,dirty_decay_ms:5000,muzzy_decay_ms:5000"
                 node_manager &
             fi
+
             pid=$!
         fi
         wait $pid
@@ -223,7 +368,7 @@ if [ $# -eq 0 ]; then
         set_controller_env
         elastic_scaling_sync_loop &
         om_adapter Controller &
-        mindie_motor_controller
+        mindie_run_controller
     fi
 
     if [ $exit_code -eq 0 ]; then
@@ -251,7 +396,7 @@ if [ $# -eq 0 ]; then
             source $CANN_INSTALL_PATH/ascend-toolkit/set_env.sh
         fi
         om_adapter Coordinator &
-        mindie_motor_coordinator "$POD_IP" "$POD_IP"
+        mindie_run_coordinator "$POD_IP" "$POD_IP"
     fi
 elif [ $# -eq 1 ]; then
     if [[ "$1" == "single_container" ]]; then
@@ -292,6 +437,7 @@ elif [ $# -eq 1 ]; then
         python3 /mnt/configmap/file_utils.py "$CANN_INSTALL_PATH/nnal/atb/set_env.sh" --permission-mode 555 || exit 1
         source "$CANN_INSTALL_PATH/nnal/atb/set_env.sh"
         export GRPC_POLL_STRATEGY=poll
+
         for ((i=1; i<$server_num + 1; i++)); do
             export ATB_LLM_HCCL_ENABLE=1
             export PD_MODE=0
@@ -301,19 +447,23 @@ elif [ $# -eq 1 ]; then
             export HCCL_RDMA_TIMEOUT=18
             export HCCL_EXEC_TIMEOUT=60
             sleep 1
-            mindie_llm_server --config-file "$CONFIG_DIR/config$i.json" &
+            if [ "${MINDIE_IS_WHL_PACKAGE:-1}" = "1" ]; then
+                /usr/local/bin/mindie_llm_server --config-file "$CONFIG_DIR/config$i.json" --expert-parallel true &
+            else
+                "$MIES_INSTALL_PATH/bin/mindieservice_daemon" --config-file "$CONFIG_DIR/config$i.json" --expert-parallel true &
+            fi
         done
 
         # pull up coordinator
         export MINDIE_MS_COORDINATOR_CONFIG_FILE_PATH="$CONFIG_DIR/ms_coordinator.json"
         om_adapter Coordinator &
-        mindie_motor_coordinator "$POD_IP" &
+        mindie_run_coordinator "$POD_IP" &
 
         # pull up controller
         export GLOBAL_RANK_TABLE_FILE_PATH="$MIES_INSTALL_PATH/global_ranktable.json"
         export MINDIE_MS_CONTROLLER_CONFIG_FILE_PATH="$CONFIG_DIR/ms_controller.json"
         om_adapter Controller &
-        mindie_motor_controller
+        mindie_run_controller
 
     fi
 fi

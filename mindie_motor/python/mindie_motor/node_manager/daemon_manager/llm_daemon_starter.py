@@ -22,33 +22,57 @@ from .base_daemon_manager import BaseDaemonManager
 
 
 class LLMDaemonManager(BaseDaemonManager, metaclass=_SingletonMeta):
-
     def __init__(self):
         super().__init__(daemon_type="MindIE-LLM")
 
     def init_daemon_config(self):
-        self.mies_install_path = os.getenv('MIES_INSTALL_PATH', '.')
-        self.config_dir = os.path.join(self.mies_install_path, 'conf')
+        # install.sh 会建立 mindie-service/latest -> 版本目录 的软链；PathCheck 拒绝路径本身为软链，
+        # 与 om_adapter.config 一致，先解析为真实路径再校验。
+        _raw_mies = os.getenv("MIES_INSTALL_PATH", ".")
+        self.mies_install_path = os.path.realpath(_raw_mies)
+        self.config_dir = os.path.join(self.mies_install_path, "conf")
+        self.is_whl_package = int(os.getenv("MINDIE_IS_WHL_PACKAGE", "1")) == 1
 
         if not PathCheck.check_path_full(self.mies_install_path):
-            raise RuntimeError(f"Invalid MIES_INSTALL_PATH: {self.mies_install_path}")
+            raise RuntimeError(
+                f"Invalid MIES_INSTALL_PATH: {_raw_mies} (resolved: {self.mies_install_path})"
+            )
         if not PathCheck.check_path_full(self.config_dir, mode=0o750):
             raise RuntimeError(f"Invalid config directory: {self.config_dir}")
 
-    def build_daemon_command(self, config_file: Optional[str], instance_name: str, **kwargs) -> List[str]:
-        cpu_binding = kwargs.get('cpu_binding')
-        if cpu_binding:
-            cmd = ['taskset', '-c', cpu_binding, "/usr/local/bin/mindie_llm_server"]
+    def build_daemon_command(
+        self, config_file: Optional[str], instance_name: str, **kwargs
+    ) -> List[str]:
+        cpu_binding = kwargs.get("cpu_binding")
+
+        if self.is_whl_package:
+            # whl 包模式 - 使用 mindie_llm_server
+            if cpu_binding:
+                cmd = ["taskset", "-c", cpu_binding, "/usr/local/bin/mindie_llm_server"]
+            else:
+                cmd = ["/usr/local/bin/mindie_llm_server"]
         else:
-            cmd = ["/usr/local/bin/mindie_llm_server"]
+            # run 包模式 - 使用 mindieservice_daemon
+            daemon_path = os.path.join(
+                self.mies_install_path, "bin/mindieservice_daemon"
+            )
+            if not PathCheck.check_path_full(daemon_path):
+                raise RuntimeError(
+                    f"Daemon binary not found or invalid permissions: {daemon_path}"
+                )
+            if cpu_binding:
+                cmd = ["taskset", "-c", cpu_binding, daemon_path]
+            else:
+                cmd = [daemon_path]
+
         if config_file:
-            cmd.extend(['--config-file', config_file])
-        cmd.extend(['--expert-parallel', 'true'])
+            cmd.extend(["--config-file", config_file])
+        cmd.extend(["--expert-parallel", "true"])
         return cmd
 
     def parse_daemon_arguments(self) -> Dict:
         if len(sys.argv) == 1:
-            return {'mode': 'single'}
+            return {"mode": "single"}
         elif len(sys.argv) == 3:
             # Distributed mode: server_count role
             try:
@@ -59,20 +83,26 @@ class LLMDaemonManager(BaseDaemonManager, metaclass=_SingletonMeta):
                 if role not in ["decode", "prefill"]:
                     raise ValueError("Role must be 'decode' or 'prefill'")
                 return {
-                    'mode': 'distributed',
-                    'server_count': server_count,
-                    'role': role
+                    "mode": "distributed",
+                    "server_count": server_count,
+                    "role": role,
                 }
             except ValueError as e:
                 raise ValueError(f"Invalid arguments: {e}") from e
         else:
-            raise ValueError("Invalid arguments. Usage: node_manager [server_count role]")
+            raise ValueError(
+                "Invalid arguments. Usage: node_manager [server_count role]"
+            )
 
     def get_device_type(self) -> str:
         command = "lspci"
-        result = subprocess.run([command], capture_output=True, text=True, check=False, timeout=5)
+        result = subprocess.run(
+            [command], capture_output=True, text=True, check=False, timeout=5
+        )
         if result.returncode != 0:
-            self.logger.warning(f"lspci command failed with return code {result.returncode}")
+            self.logger.warning(
+                f"lspci command failed with return code {result.returncode}"
+            )
             return None
         pci_type = None
         device_pattern = re.compile(r"Device\s+(d\d{3})", re.IGNORECASE)
@@ -93,24 +123,22 @@ class LLMDaemonManager(BaseDaemonManager, metaclass=_SingletonMeta):
         try:
             return query_cpu_binding(instance_id, device_type)
         except Exception as e:
-            self.logger.error(f"Failed to get CPU binding for instance {instance_id}: {e}")
+            self.logger.error(
+                f"Failed to get CPU binding for instance {instance_id}: {e}"
+            )
             return None
 
     def start_daemon_instances(self, daemon_args: Dict):
-        if daemon_args['mode'] == 'single':
+        if daemon_args["mode"] == "single":
             self.start_single_mode()
-        elif daemon_args['mode'] == 'distributed':
+        elif daemon_args["mode"] == "distributed":
             self.start_distributed_mode(
-                daemon_args['server_count'],
-                daemon_args['role']
+                daemon_args["server_count"], daemon_args["role"]
             )
 
     def is_child_process_detected(self, pid: int) -> bool:
         process_infos = subprocess.run(
-            ["/bin/ps", "-efH"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["/bin/ps", "-efH"], capture_output=True, text=True, check=True
         ).stdout
         process_info_lines = process_infos.splitlines()
         # Fetch the PID and CMD from `ps -efH`
@@ -126,7 +154,7 @@ class LLMDaemonManager(BaseDaemonManager, metaclass=_SingletonMeta):
 
     def start_distributed_mode(self, server_count: int, role: str):
         for i in range(1, server_count + 1):
-            config_file = os.path.join(self.config_dir, f'config{i}.json')
+            config_file = os.path.join(self.config_dir, f"config{i}.json")
             if not PathCheck.check_path_full(config_file, mode=0o640):
                 raise RuntimeError(f"Invalid config file: {config_file}")
             if role == "decode":
@@ -140,15 +168,13 @@ class LLMDaemonManager(BaseDaemonManager, metaclass=_SingletonMeta):
                 config_file,
                 instance_name,
                 cpu_binding=cpu_binding,
-                working_dir=self.mies_install_path
+                working_dir=self.mies_install_path,
             )
 
     def start_single_mode(self):
-        config_file = os.path.join(self.config_dir, 'config.json')
+        config_file = os.path.join(self.config_dir, "config.json")
         self.start_daemon_process(
-            config_file,
-            "single_instance",
-            working_dir=self.mies_install_path
+            config_file, "single_instance", working_dir=self.mies_install_path
         )
 
 
